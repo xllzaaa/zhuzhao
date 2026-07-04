@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   烛照设计系统 - 主题变量
+   详见 docs/UI_UX_SPEC.md §8 颜色系统
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* 浅色主题（备选） */
+    --background: 60 9% 98%;
+    --foreground: 20 14% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 11%;
+
+    /* 烛光琥珀（主强调色） */
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 60 5% 94%;
+    --secondary-foreground: 20 14% 11%;
+
+    --muted: 60 5% 94%;
+    --muted-foreground: 30 5% 40%;
+
+    --accent: 60 5% 94%;
+    --accent-foreground: 20 14% 11%;
+
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 5% 87%;
+    --input: 30 5% 87%;
+    --ring: 38 92% 50%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* 深色主题（默认）- 墨黑 + 烛光琥珀 */
+    --background: 240 6% 3.5%;
+    --foreground: 240 5% 89%;
+
+    --card: 240 6% 8%;
+    --card-foreground: 240 5% 89%;
+
+    --popover: 240 6% 8%;
+    --popover-foreground: 240 5% 89%;
+
+    /* 烛光琥珀（amber-500）作为主强调色 */
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 11.5%;
+    --secondary-foreground: 240 5% 89%;
+
+    --muted: 240 6% 11.5%;
+    --muted-foreground: 240 4% 65%;
+
+    --accent: 240 6% 11.5%;
+    --accent-foreground: 240 5% 89%;
+
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 16%;
+    --input: 240 5% 16%;
+    --ring: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 滚动条样式 - 深色主题 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: hsl(var(--border));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+/* reduced-motion 支持 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
