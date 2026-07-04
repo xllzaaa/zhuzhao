@@ -1,9 +1,39 @@
-import { LayoutDashboard, Zap, FileText, Lightbulb, AlertTriangle, ClipboardList } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  Zap,
+  FileText,
+  Lightbulb,
+  AlertTriangle,
+  ClipboardList,
+  CheckCircle2,
+  Clock,
+  Calendar,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PagePlaceholder, PlaceholderCard } from "@/components/layout/PagePlaceholder";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  TaskStatusBadge,
+  TaskPriorityBadge,
+  HarshHighlight,
+} from "@/components/badges/StatusBadges";
+import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
+import { loadDashboardData, type DashboardData } from "@/lib/repositories/dashboard-queries";
+import type { EventRow, TaskRow, JournalEntryRow, IdeaRow } from "@/types/db";
+import { format } from "date-fns";
 
 export function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadDashboardData()
+      .then(setData)
+      .catch((err) => setError(err?.message ?? String(err)));
+  }, []);
+
   return (
     <PagePlaceholder
       title="Dashboard"
@@ -31,63 +61,284 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* 三列网格 - Dashboard 主体（Phase 2 起接入真实数据） */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <PlaceholderCard
-          title="今日最重要"
-          className="md:col-span-1"
-        >
-          <div className="flex h-28 items-center justify-center text-xs text-muted-foreground/50">
-            还没有任务
-          </div>
-        </PlaceholderCard>
+      {error && (
+        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          加载失败：{error}
+        </div>
+      )}
 
-        <PlaceholderCard title="今日到期">
-          <div className="flex h-28 items-center justify-center text-xs text-muted-foreground/50">
-            0 项
-          </div>
-        </PlaceholderCard>
+      {!data && !error && (
+        <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
+          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          加载中...
+        </div>
+      )}
 
-        <PlaceholderCard
-          title="烛照监督提醒"
-          className="border-destructive/30"
-        >
-          <div className="flex h-28 flex-col items-center justify-center gap-2 text-xs text-muted-foreground/50">
-            <AlertTriangle className="h-5 w-5 text-destructive/40" />
-            <span>暂无逾期</span>
-          </div>
-        </PlaceholderCard>
+      {data && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* 今日最重要任务 */}
+          <Card className="p-4 md:col-span-1">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+              今日最重要
+            </h3>
+            {data.topOfToday ? (
+              <TaskCard task={data.topOfToday} highlight />
+            ) : (
+              <EmptyHint icon={Zap} text="暂无高优先级任务" />
+            )}
+          </Card>
 
-        <PlaceholderCard title="进行中">
-          <div className="flex h-20 items-center justify-center text-xs text-muted-foreground/50">
-            0 项
-          </div>
-        </PlaceholderCard>
+          {/* 今日到期 */}
+          <Card className="p-4">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              今日到期（{data.dueToday.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.dueToday.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.dueToday.map((t) => (
+                    <TaskMiniCard key={t.id} task={t} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={Clock} text="今日无到期任务" />
+              )}
+            </ScrollArea>
+          </Card>
 
-        <PlaceholderCard title="延期任务" className="border-destructive/20">
-          <div className="flex h-20 items-center justify-center text-xs text-muted-foreground/50">
-            0 项
-          </div>
-        </PlaceholderCard>
+          {/* 烛照监督提醒 */}
+          <Card className="border-destructive/30 p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              烛照监督提醒（{data.harsh.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.harsh.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.harsh.map((t) => (
+                    <HarshHighlight key={t.id} delayCount={t.delay_count}>
+                      <TaskMiniCard task={t} />
+                    </HarshHighlight>
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={AlertTriangle} text="暂无逾期重点" />
+              )}
+            </ScrollArea>
+          </Card>
 
-        <PlaceholderCard title="今日输入">
-          <div className="flex h-20 items-center justify-center text-xs text-muted-foreground/50">
-            0 条
-          </div>
-        </PlaceholderCard>
+          {/* 进行中 */}
+          <Card className="p-4">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+              进行中（{data.doing.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.doing.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.doing.map((t) => (
+                    <TaskMiniCard key={t.id} task={t} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={CheckCircle2} text="暂无进行中任务" />
+              )}
+            </ScrollArea>
+          </Card>
 
-        <PlaceholderCard title="最近日记">
-          <FileText className="mx-auto h-5 w-5 text-muted-foreground/30" />
-        </PlaceholderCard>
+          {/* 延期任务 */}
+          <Card className="border-orange-500/20 p-4">
+            <h3 className="mb-2 text-xs font-medium text-orange-400">
+              延期任务（{data.delayed.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.delayed.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.delayed.map((t) => (
+                    <TaskMiniCard key={t.id} task={t} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={Clock} text="暂无延期任务" />
+              )}
+            </ScrollArea>
+          </Card>
 
-        <PlaceholderCard title="最近灵感">
-          <Lightbulb className="mx-auto h-5 w-5 text-muted-foreground/30" />
-        </PlaceholderCard>
+          {/* 今日输入 */}
+          <Card className="p-4">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+              今日输入（{data.recentEvents.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.recentEvents.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  {data.recentEvents.map((e) => (
+                    <EventMiniCard key={e.id} event={e} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={Zap} text="还没有输入" />
+              )}
+            </ScrollArea>
+          </Card>
 
-        <PlaceholderCard title="每日总结">
-          <ClipboardList className="mx-auto h-5 w-5 text-muted-foreground/30" />
-        </PlaceholderCard>
-      </div>
+          {/* 最近日记 */}
+          <Card className="p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <FileText className="h-3 w-3" />
+              最近日记
+            </h3>
+            <ScrollArea className="h-32">
+              {data.recentJournals.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.recentJournals.map((j) => (
+                    <JournalMiniCard key={j.id} journal={j} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={FileText} text="还没有日记" />
+              )}
+            </ScrollArea>
+          </Card>
+
+          {/* 最近灵感 */}
+          <Card className="p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Lightbulb className="h-3 w-3" />
+              最近灵感
+            </h3>
+            <ScrollArea className="h-32">
+              {data.recentIdeas.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.recentIdeas.map((i) => (
+                    <IdeaMiniCard key={i.id} idea={i} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={Lightbulb} text="还没有灵感" />
+              )}
+            </ScrollArea>
+          </Card>
+
+          {/* 每日总结入口 */}
+          <Card className="p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <ClipboardList className="h-3 w-3" />
+              每日总结
+            </h3>
+            <EmptyHint icon={ClipboardList} text="今日未生成总结" />
+          </Card>
+        </div>
+      )}
     </PagePlaceholder>
+  );
+}
+
+/** 任务卡片（用于今日最重要） */
+function TaskCard({ task, highlight }: { task: TaskRow; highlight?: boolean }) {
+  return (
+    <div
+      className={`rounded-md border p-2.5 ${
+        highlight ? "border-primary/40 bg-primary/5" : "border-border"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium">{task.title}</span>
+        <TaskPriorityBadge priority={task.priority} />
+      </div>
+      {task.description && (
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+          {task.description}
+        </p>
+      )}
+      <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+        <TaskStatusBadge status={task.status} />
+        {task.due_at && (
+          <span className="flex items-center gap-0.5">
+            <Calendar className="h-2.5 w-2.5" />
+            {format(new Date(task.due_at), "HH:mm")}
+          </span>
+        )}
+        {task.delay_count > 0 && (
+          <span className="text-orange-400">
+            延期 {task.delay_count} 次
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 任务迷你卡片 */
+function TaskMiniCard({ task }: { task: TaskRow }) {
+  return (
+    <div className="rounded border border-border px-2 py-1.5 hover:bg-accent/50">
+      <div className="flex items-center justify-between gap-1">
+        <span className="truncate text-xs">{task.title}</span>
+        <TaskStatusBadge status={task.status} />
+      </div>
+      <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+        {task.due_at && format(new Date(task.due_at), "HH:mm")}
+        {task.delay_count > 0 && (
+          <span className="text-orange-400">延期 {task.delay_count}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Event 迷你卡片 */
+function EventMiniCard({ event }: { event: EventRow }) {
+  return (
+    <div className="rounded border border-border px-2 py-1">
+      <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+        <span>{event.source}</span>
+        <span>{format(new Date(event.created_at), "HH:mm")}</span>
+      </div>
+      <p className="mt-0.5 truncate text-xs">{event.raw_content}</p>
+    </div>
+  );
+}
+
+/** 日记迷你卡片 */
+function JournalMiniCard({ journal }: { journal: JournalEntryRow }) {
+  return (
+    <div className="rounded border border-border px-2 py-1.5">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>{journal.entry_date}</span>
+        <span className="text-xs">{journal.mood}</span>
+      </div>
+      <p className="mt-0.5 line-clamp-2 text-xs">{journal.raw_content}</p>
+    </div>
+  );
+}
+
+/** 灵感迷你卡片 */
+function IdeaMiniCard({ idea }: { idea: IdeaRow }) {
+  return (
+    <div className="rounded border border-border px-2 py-1.5">
+      <div className="truncate text-xs font-medium">💡 {idea.title}</div>
+      {idea.summary && (
+        <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+          {idea.summary}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 空状态提示 */
+function EmptyHint({
+  icon: Icon,
+  text,
+}: {
+  icon: typeof Zap;
+  text: string;
+}) {
+  return (
+    <div className="flex h-full min-h-20 flex-col items-center justify-center gap-1 text-xs text-muted-foreground/50">
+      <Icon className="h-4 w-4" />
+      <span>{text}</span>
+    </div>
   );
 }

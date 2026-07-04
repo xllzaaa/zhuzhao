@@ -12,6 +12,7 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import { useAppStore } from "@/stores/app-store";
 import { useGlobalShortcuts } from "@/lib/hooks/use-global-shortcuts";
 import { initDatabase } from "@/lib/db";
+import { ensureSeedData } from "@/lib/seed";
 
 export default function App() {
   const currentPage = useAppStore((s) => s.currentPage);
@@ -32,14 +33,23 @@ export default function App() {
     }
   }, [theme]);
 
-  // 初始化 SQLite（Phase 1 验证 migrations 跑通）
+  // 初始化 SQLite + Phase 2 种子数据（仅 dev 模式）
   useEffect(() => {
-    initDatabase()
-      .then(() => setDbReady(true))
-      .catch((err) => {
+    (async () => {
+      try {
+        await initDatabase();
+        // Phase 2 验证用：若数据库为空则插入示例数据
+        // Phase 9 会改为 Settings 内手动触发
+        if (import.meta.env.DEV) {
+          await ensureSeedData();
+        }
+        setDbReady(true);
+      } catch (err: unknown) {
         console.error("[DB] 初始化失败：", err);
-        setDbError(err?.message ?? String(err));
-      });
+        const msg = err instanceof Error ? err.message : String(err);
+        setDbError(msg);
+      }
+    })();
   }, []);
 
   // DB 加载中
