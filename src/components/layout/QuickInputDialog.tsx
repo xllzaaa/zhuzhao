@@ -1,14 +1,18 @@
 /**
  * 全局快速输入 Dialog
  * 通过 ⌘+I / Ctrl+I 唤起
- * 提交后创建 Event(source='quick_input')
- * Phase 5 起：触发 LLM Intake
+ * 提交后：
+ *   1. 创建 Event(source='quick_input')
+ *   2. 异步触发 LLM Intake
+ *   3. UI 立即关闭并提示「已记录」
+ *   4. Intake 完成后再 toast 一次结果
  */
 
 import { useEffect, useState } from "react";
 import { Zap, X } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 import { createEvent } from "@/lib/repositories/event-repo";
+import { runIntake } from "@/lib/intake/run-intake";
 import { toast } from "sonner";
 
 export function QuickInputDialog() {
@@ -44,7 +48,8 @@ export function QuickInputDialog() {
     if (!trimmed || submitting) return;
     setSubmitting(true);
     try {
-      await createEvent({
+      // 1. 先落 Event（用户输入永不丢）
+      const event = await createEvent({
         source: "quick_input",
         raw_content: trimmed,
         event_type: "user_input",
@@ -52,6 +57,18 @@ export function QuickInputDialog() {
       toast.success("已记录", { description: "输入已保存到 Inbox" });
       setValue("");
       setOpen(false);
+      // 2. 异步触发 LLM Intake（不阻塞 UI）
+      runIntake(event, null)
+        .then((result) => {
+          if (result.success) {
+            toast.success("Intake 完成", { description: result.summary });
+          } else {
+            toast.warning("Intake 未完成", { description: result.summary });
+          }
+        })
+        .catch(() => {
+          // runIntake 内部已 try/catch，这里仅兜底
+        });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("保存失败", { description: msg });

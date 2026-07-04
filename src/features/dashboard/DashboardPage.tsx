@@ -22,6 +22,7 @@ import {
 import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 import { loadDashboardData, type DashboardData } from "@/lib/repositories/dashboard-queries";
 import { createEvent } from "@/lib/repositories/event-repo";
+import { runIntake } from "@/lib/intake/run-intake";
 import type { EventRow, TaskRow, JournalEntryRow, IdeaRow } from "@/types/db";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -46,15 +47,30 @@ export function DashboardPage() {
     if (!trimmed || submitting) return;
     setSubmitting(true);
     try {
-      await createEvent({
+      // 1. 先落 Event（用户输入永不丢）
+      const event = await createEvent({
         source: "quick_input",
         raw_content: trimmed,
         event_type: "user_input",
       });
       toast.success("已记录", { description: "输入已保存到 Inbox" });
       setQuickInput("");
-      // 刷新 Dashboard 数据
+      // 2. 刷新 Dashboard（让用户看到新 Event）
       reloadData();
+      // 3. 异步触发 LLM Intake（不阻塞 UI）
+      //    Intake 完成后再刷新一次 Dashboard，让自动创建的 Task/Journal/Idea 可见
+      runIntake(event, null)
+        .then((result) => {
+          reloadData();
+          if (result.success) {
+            toast.success("Intake 完成", { description: result.summary });
+          } else {
+            toast.warning("Intake 未完成", { description: result.summary });
+          }
+        })
+        .catch(() => {
+          // runIntake 内部已 try/catch，这里仅兜底
+        });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("保存失败", { description: msg });

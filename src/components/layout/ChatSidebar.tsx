@@ -30,6 +30,7 @@ export function ChatSidebar() {
     conversations,
     loading,
     error,
+    intakePending,
     init,
     sendMessage,
     newConversation,
@@ -43,13 +44,13 @@ export function ChatSidebar() {
     init();
   }, [init]);
 
-  // 消息更新时自动滚动到底部
+  // 消息更新或 intakePending 变化时自动滚动到底部
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages.length]);
+  }, [messages.length, intakePending]);
 
   // 折叠态
   if (!open) {
@@ -158,6 +159,12 @@ export function ChatSidebar() {
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
           ))}
+          {intakePending && (
+            <div className="flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground/70">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+              烛照在思考...
+            </div>
+          )}
         </div>
       </ScrollArea>
 
