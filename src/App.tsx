@@ -12,6 +12,7 @@ import { ReviewsPage } from "@/features/reviews/ReviewsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { useAppStore } from "@/stores/app-store";
 import { useGlobalShortcuts } from "@/lib/hooks/use-global-shortcuts";
+import { useSupervisionScheduler } from "@/lib/hooks/use-supervision-scheduler";
 import { initDatabase } from "@/lib/db";
 import { ensureSeedData } from "@/lib/seed";
 
@@ -23,6 +24,9 @@ export default function App() {
 
   // 全局快捷键
   useGlobalShortcuts();
+
+  // Phase 6: 启动监督 scheduler（启动时 recovery + 60s 轮询 pending reminder）
+  useSupervisionScheduler({ ready: dbReady });
 
   // 主题切换：操作 documentElement class
   useEffect(() => {

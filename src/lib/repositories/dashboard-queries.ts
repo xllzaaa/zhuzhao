@@ -26,6 +26,16 @@ export interface DashboardData {
   delayed: TaskRow[];
   /** 逾期重点（delay_count >= 2） */
   harsh: TaskRow[];
+  /**
+   * 已逾期任务（due_at < now，未完成未归档）
+   * Phase 6 新增：用于 Dashboard 监督区域
+   */
+  overdue: TaskRow[];
+  /**
+   * 高 delay_count 任务（delay_count >= 1，未完成未归档）
+   * Phase 6 新增：用于 Dashboard 监督区域
+   */
+  highDelay: TaskRow[];
   /** 今日输入 */
   recentEvents: EventRow[];
   /** 最近日记 */
@@ -34,6 +44,11 @@ export interface DashboardData {
   recentIdeas: IdeaRow[];
   /** 待触发 reminder（即将到期或已到期） */
   pendingReminders: ReminderRow[];
+  /**
+   * 最近触发/已处理的 reminder（已 fired/resolved/snoozed/cancelled）
+   * Phase 6 新增：用于 Dashboard 展示
+   */
+  recentlyTriggeredReminders: ReminderRow[];
 }
 
 /** 加载 Dashboard 全部数据 */
@@ -47,10 +62,13 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     doing,
     delayed,
     harsh,
+    overdue,
+    highDelay,
     recentEvents,
     recentJournals,
     recentIdeas,
     pendingReminders,
+    recentlyTriggeredReminders,
   ] = await Promise.all([
     query<TaskRow>(
       `SELECT * FROM tasks
@@ -73,6 +91,20 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     query<TaskRow>(
       "SELECT * FROM tasks WHERE delay_count >= 2 AND status NOT IN ('done', 'dropped') ORDER BY delay_count DESC, updated_at DESC",
     ),
+    // Phase 6: 已逾期（due_at < now，未完成未归档）
+    query<TaskRow>(
+      `SELECT * FROM tasks
+       WHERE due_at IS NOT NULL AND due_at < ?
+         AND status NOT IN ('done', 'dropped')
+       ORDER BY due_at ASC`,
+      [now],
+    ),
+    // Phase 6: 高 delay_count（>=1）
+    query<TaskRow>(
+      `SELECT * FROM tasks
+       WHERE delay_count >= 1 AND status NOT IN ('done', 'dropped')
+       ORDER BY delay_count DESC, updated_at DESC LIMIT 10`,
+    ),
     query<EventRow>(
       "SELECT * FROM events ORDER BY created_at DESC LIMIT ?",
       [limit],
@@ -89,6 +121,13 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
       "SELECT * FROM reminders WHERE status = 'pending' AND remind_at <= ? ORDER BY remind_at ASC",
       [now],
     ),
+    // Phase 6: 最近触发的 reminder（已 fired/resolved/snoozed/cancelled）
+    query<ReminderRow>(
+      `SELECT * FROM reminders
+       WHERE status IN ('fired', 'resolved', 'snoozed', 'cancelled')
+       ORDER BY updated_at DESC LIMIT ?`,
+      [limit],
+    ),
   ]);
 
   return {
@@ -97,9 +136,12 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     doing,
     delayed,
     harsh,
+    overdue,
+    highDelay,
     recentEvents,
     recentJournals,
     recentIdeas,
     pendingReminders,
+    recentlyTriggeredReminders,
   };
 }

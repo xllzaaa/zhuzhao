@@ -158,3 +158,167 @@ export async function updateTask(
 export async function deleteTask(id: string): Promise<void> {
   await execute("DELETE FROM tasks WHERE id = ?", [id]);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6: 任务监督闭环相关查询与操作
+// ---------------------------------------------------------------------------
+
+/**
+ * 任务状态分组（按 UI 5 分类对齐用户要求 §9）
+ * - inbox: 待规划
+ * - active: 进行中（planned + scheduled + doing + blocked）
+ * - delayed: 延期
+ * - done: 已完成
+ * - archived: 已归档（dropped）
+ *
+ * 详见 task-supervision spec §2.1
+ */
+export type TaskStatusGroup = "inbox" | "active" | "delayed" | "done" | "archived";
+
+export function statusToGroup(status: TaskStatus): TaskStatusGroup {
+  switch (status) {
+    case "inbox":
+      return "inbox";
+    case "planned":
+    case "scheduled":
+    case "doing":
+    case "blocked":
+      return "active";
+    case "delayed":
+      return "delayed";
+    case "done":
+      return "done";
+    case "dropped":
+      return "archived";
+    case "review_needed":
+      return "inbox"; // 需人工确认暂归 inbox
+    default:
+      return "inbox";
+  }
+}
+
+/** 已逾期（due_at < now，且未完成未归档） */
+export async function listOverdue(): Promise<TaskRow[]> {
+  const now = nowIso();
+  return query<TaskRow>(
+    `SELECT * FROM tasks
+     WHERE due_at IS NOT NULL AND due_at < ?
+       AND status NOT IN ('done', 'dropped')
+     ORDER BY due_at ASC`,
+    [now],
+  );
+}
+
+/** 已完成 */
+export async function listDone(limit = 50): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE status = 'done' ORDER BY completed_at DESC, updated_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/** 已归档（dropped） */
+export async function listArchived(limit = 50): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE status = 'dropped' ORDER BY updated_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/** inbox 状态 */
+export async function listInbox(limit = 50): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE status IN ('inbox', 'review_needed') ORDER BY created_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/** active 状态（planned + scheduled + doing + blocked） */
+export async function listActive(limit = 50): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE status IN ('planned', 'scheduled', 'doing', 'blocked') ORDER BY updated_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/** 全部未完成（用于今日视图过滤等） */
+export async function listAllNotDone(limit = 100): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE status NOT IN ('done', 'dropped') ORDER BY created_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/** 高 delay_count 任务（用于 Dashboard 监督提醒） */
+export async function listHighDelay(limit = 10): Promise<TaskRow[]> {
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE delay_count >= 1 AND status NOT IN ('done', 'dropped')
+     ORDER BY delay_count DESC, updated_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/**
+ * 标记任务完成（INV-6: delay_count 不重置，保持单调递增历史）
+ *
+ * @param id 任务 id
+ * @param completionNote 完成备注（可选）
+ */
+export async function markDone(
+  id: string,
+  completionNote: string | null = null,
+): Promise<TaskRow | null> {
+  const now = nowIso();
+  await execute(
+    `UPDATE tasks
+     SET status = 'done', completion_note = ?, completed_at = ?, updated_at = ?
+     WHERE id = ?`,
+    [completionNote, now, now, id],
+  );
+  return getById(id);
+}
+
+/**
+ * 延期任务（只更新 task 字段，不创建新 reminder；reminder 由 task-ops.delayTask 处理）
+ *
+ * INV-6: delay_count 单调递增
+ *
+ * @param id 任务 id
+ * @param newDueAt 新的 due_at
+ * @param failureReason 延期原因（可选，UI 暂未输入时可为空）
+ * @param newStatus 新状态，默认 delayed；可传 scheduled 让任务立即重新激活
+ */
+export async function applyDelay(
+  id: string,
+  newDueAt: string,
+  failureReason: string | null = null,
+  newStatus: TaskStatus = "delayed",
+): Promise<TaskRow | null> {
+  const now = nowIso();
+  await execute(
+    `UPDATE tasks
+     SET due_at = ?, status = ?, delay_count = delay_count + 1,
+         failure_reason = ?, updated_at = ?
+     WHERE id = ?`,
+    [newDueAt, newStatus, failureReason, now, id],
+  );
+  return getById(id);
+}
+
+/**
+ * 激活任务（inbox → scheduled；填好 due_at/scheduled_at 后激活）
+ */
+export async function activateTask(
+  id: string,
+  dueAt: string | null,
+  scheduledAt: string | null = null,
+): Promise<TaskRow | null> {
+  const now = nowIso();
+  await execute(
+    `UPDATE tasks
+     SET status = 'scheduled', due_at = ?, scheduled_at = ?, updated_at = ?
+     WHERE id = ?`,
+    [dueAt, scheduledAt, now, id],
+  );
+  return getById(id);
+}

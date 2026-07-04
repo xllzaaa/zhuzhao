@@ -84,3 +84,77 @@ export async function snooze(id: string, newRemindAt: string): Promise<void> {
     [newRemindAt, nowIso(), id],
   );
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6: 任务监督闭环相关查询
+// ---------------------------------------------------------------------------
+
+/**
+ * 查询某时刻之前已 fired 但未回复的 reminder
+ * 用于启动恢复：扫描遗留未回复 reminder
+ */
+export async function listFiredBefore(
+  beforeIso: string,
+): Promise<ReminderRow[]> {
+  return query<ReminderRow>(
+    `SELECT * FROM reminders
+     WHERE status = 'fired' AND remind_at < ?
+     ORDER BY remind_at ASC`,
+    [beforeIso],
+  );
+}
+
+/** 查询某 task 仍处于 pending / fired 状态的 reminder（用于 markDone 时批量关闭） */
+export async function listActiveByTaskId(
+  taskId: string,
+): Promise<ReminderRow[]> {
+  return query<ReminderRow>(
+    `SELECT * FROM reminders
+     WHERE task_id = ? AND status IN ('pending', 'fired')
+     ORDER BY remind_at ASC`,
+    [taskId],
+  );
+}
+
+/** 最近触发的 reminder（用于 Dashboard 展示） */
+export async function listRecentlyTriggered(
+  limit = 5,
+): Promise<ReminderRow[]> {
+  return query<ReminderRow>(
+    `SELECT * FROM reminders
+     WHERE status IN ('fired', 'resolved', 'snoozed', 'cancelled')
+     ORDER BY updated_at DESC LIMIT ?`,
+    [limit],
+  );
+}
+
+/**
+ * 批量关闭 task 的所有 active reminder
+ * - markDone 时：标记为 resolved
+ * - delayTask 时：标记为 cancelled（由新 reminder 接替）
+ */
+export async function resolveByTask(
+  taskId: string,
+  status: "resolved" | "cancelled",
+): Promise<number> {
+  const result = await execute(
+    `UPDATE reminders
+     SET status = ?, updated_at = ?
+     WHERE task_id = ? AND status IN ('pending', 'fired')`,
+    [status, nowIso(), taskId],
+  );
+  return result;
+}
+
+/** 列出指定时刻之后的所有 pending reminder（用于 Dashboard 即将到期展示） */
+export async function listPendingAfter(
+  afterIso: string,
+  limit = 10,
+): Promise<ReminderRow[]> {
+  return query<ReminderRow>(
+    `SELECT * FROM reminders
+     WHERE status = 'pending' AND remind_at > ?
+     ORDER BY remind_at ASC LIMIT ?`,
+    [afterIso, limit],
+  );
+}

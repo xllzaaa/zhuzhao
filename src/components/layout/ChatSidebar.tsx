@@ -37,20 +37,40 @@ export function ChatSidebar() {
     selectConversation,
   } = useChatStore();
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Phase 6 验收反馈修订：用 ScrollArea 根 ref + querySelector 拿 viewport
+  // shadcn ScrollArea 的实际滚动元素是 Viewport（带 data-radix-scroll-area-viewport 属性）
+  // 旧的 scrollRef 指向 ScrollArea 内部 div，scrollTo 没作用到 viewport 上
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // 挂载时加载会话
   useEffect(() => {
     init();
   }, [init]);
 
-  // 消息更新或 intakePending 变化时自动滚动到底部
+  // 自动滚动到底部：覆盖 5 个触发场景
+  // 1. 用户发送消息后（messages.length 增加）
+  // 2. assistant 回复追加后（messages.length 增加）
+  // 3. intakePending 开始/结束后（intakePending 变化）
+  // 4. scheduler 插入 [烛照追问] 消息后（messages.length 增加，由 use-supervision-scheduler 通过 setState 触发）
+  // 5. 切换 conversation 后（currentConversation.id 变化）
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+    // 用 requestAnimationFrame 确保 DOM 已完成更新
+    const rafId = requestAnimationFrame(() => {
+      const viewport = scrollArea.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     });
-  }, [messages.length, intakePending]);
+    return () => cancelAnimationFrame(rafId);
+  }, [
+    messages.length,
+    intakePending,
+    currentConversation?.id,
+  ]);
 
   // 折叠态
   if (!open) {
@@ -143,8 +163,8 @@ export function ChatSidebar() {
       )}
 
       {/* 消息流 */}
-      <ScrollArea className="flex-1">
-        <div ref={scrollRef} className="flex flex-col gap-3 px-3 py-3">
+      <ScrollArea ref={scrollAreaRef} className="flex-1">
+        <div className="flex flex-col gap-3 px-3 py-3">
           {messages.length === 0 && !loading && (
             <div className="mt-8 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground/60">
               <MessageSquare className="h-6 w-6" />
@@ -212,6 +232,9 @@ function MessageBubble({
 }) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  // Phase 6: scheduler 触发的追问消息以「[烛照追问]」开头，使用特殊样式
+  const isSupervisorFollowUp =
+    !isUser && !isSystem && message.content.startsWith("[烛照追问]");
 
   return (
     <div
@@ -222,12 +245,14 @@ function MessageBubble({
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+          "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
           isUser
             ? "bg-primary/15 text-foreground"
             : isSystem
               ? "border border-border bg-muted/30 text-muted-foreground"
-              : "bg-secondary text-secondary-foreground",
+              : isSupervisorFollowUp
+                ? "border border-orange-500/40 bg-orange-500/5 text-foreground"
+                : "bg-secondary text-secondary-foreground",
         )}
       >
         {message.content}
@@ -236,6 +261,9 @@ function MessageBubble({
         <span>{format(new Date(message.created_at), "HH:mm")}</span>
         {message.event_id && (
           <span title={`event_id: ${message.event_id}`}>· 已存档</span>
+        )}
+        {isSupervisorFollowUp && (
+          <span className="text-orange-400" title="监督追问">· 监督</span>
         )}
       </div>
     </div>

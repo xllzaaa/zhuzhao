@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   Clock,
   Calendar,
+  BellRing,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +25,7 @@ import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 import { loadDashboardData, type DashboardData } from "@/lib/repositories/dashboard-queries";
 import { createEvent } from "@/lib/repositories/event-repo";
 import { runIntake } from "@/lib/intake/run-intake";
-import type { EventRow, TaskRow, JournalEntryRow, IdeaRow } from "@/types/db";
+import type { EventRow, TaskRow, JournalEntryRow, IdeaRow, ReminderRow } from "@/types/db";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -175,6 +177,63 @@ export function DashboardPage() {
             </ScrollArea>
           </Card>
 
+          {/* Phase 6: 已逾期任务（due_at < now） */}
+          <Card className="border-rose-600/30 p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-rose-400">
+              <Calendar className="h-3 w-3" />
+              已逾期任务（{data.overdue.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.overdue.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.overdue.map((t) => (
+                    <TaskMiniCard key={t.id} task={t} overdue />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={Calendar} text="暂无逾期" />
+              )}
+            </ScrollArea>
+          </Card>
+
+          {/* Phase 6: 高 delay_count 任务 */}
+          <Card className="border-orange-500/30 p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-orange-400">
+              <TrendingUp className="h-3 w-3" />
+              高延期任务（{data.highDelay.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.highDelay.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {data.highDelay.map((t) => (
+                    <TaskMiniCard key={t.id} task={t} highlightDelay />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={TrendingUp} text="暂无延期记录" />
+              )}
+            </ScrollArea>
+          </Card>
+
+          {/* Phase 6: 最近触发的提醒 */}
+          <Card className="p-4">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <BellRing className="h-3 w-3" />
+              最近触发的提醒（{data.recentlyTriggeredReminders.length}）
+            </h3>
+            <ScrollArea className="h-32">
+              {data.recentlyTriggeredReminders.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  {data.recentlyTriggeredReminders.map((r) => (
+                    <ReminderMiniCard key={r.id} reminder={r} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyHint icon={BellRing} text="暂无触发记录" />
+              )}
+            </ScrollArea>
+          </Card>
+
           {/* 进行中 */}
           <Card className="p-4">
             <h3 className="mb-2 text-xs font-medium text-muted-foreground">
@@ -317,19 +376,74 @@ function TaskCard({ task, highlight }: { task: TaskRow; highlight?: boolean }) {
 }
 
 /** 任务迷你卡片 */
-function TaskMiniCard({ task }: { task: TaskRow }) {
+function TaskMiniCard({
+  task,
+  overdue = false,
+  highlightDelay = false,
+}: {
+  task: TaskRow;
+  overdue?: boolean;
+  highlightDelay?: boolean;
+}) {
   return (
-    <div className="rounded border border-border px-2 py-1.5 hover:bg-accent/50">
+    <div
+      className={`rounded border px-2 py-1.5 hover:bg-accent/50 ${
+        overdue
+          ? "border-rose-600/40 bg-rose-600/5"
+          : highlightDelay && task.delay_count >= 2
+            ? "border-rose-600/30"
+            : "border-border"
+      }`}
+    >
       <div className="flex items-center justify-between gap-1">
         <span className="truncate text-xs">{task.title}</span>
         <TaskStatusBadge status={task.status} />
       </div>
       <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-        {task.due_at && format(new Date(task.due_at), "HH:mm")}
+        {task.due_at && (
+          <span className={overdue ? "text-rose-400" : ""}>
+            {format(new Date(task.due_at), "MM-dd HH:mm")}
+            {overdue && " · 逾期"}
+          </span>
+        )}
         {task.delay_count > 0 && (
-          <span className="text-orange-400">延期 {task.delay_count}</span>
+          <span
+            className={
+              task.delay_count >= 2 ? "text-rose-400" : "text-orange-400"
+            }
+          >
+            延期 {task.delay_count}
+          </span>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Reminder 迷你卡片（Phase 6） */
+function ReminderMiniCard({
+  reminder,
+}: {
+  reminder: ReminderRow;
+}) {
+  const statusColor: Record<string, string> = {
+    pending: "text-zinc-400",
+    fired: "text-amber-400",
+    snoozed: "text-sky-400",
+    resolved: "text-emerald-400",
+    cancelled: "text-zinc-500",
+  };
+  return (
+    <div className="rounded border border-border px-2 py-1">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span className={statusColor[reminder.status] ?? "text-muted-foreground"}>
+          {reminder.status}
+        </span>
+        <span>{format(new Date(reminder.remind_at), "MM-dd HH:mm")}</span>
+      </div>
+      {reminder.message && (
+        <p className="mt-0.5 truncate text-xs">{reminder.message}</p>
+      )}
     </div>
   );
 }
