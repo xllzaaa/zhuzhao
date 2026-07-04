@@ -21,18 +21,47 @@ import {
 } from "@/components/badges/StatusBadges";
 import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 import { loadDashboardData, type DashboardData } from "@/lib/repositories/dashboard-queries";
+import { createEvent } from "@/lib/repositories/event-repo";
 import type { EventRow, TaskRow, JournalEntryRow, IdeaRow } from "@/types/db";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 export function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quickInput, setQuickInput] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  const reloadData = () =>
     loadDashboardData()
       .then(setData)
       .catch((err) => setError(err?.message ?? String(err)));
+
+  useEffect(() => {
+    reloadData();
   }, []);
+
+  const handleQuickSubmit = async () => {
+    const trimmed = quickInput.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    try {
+      await createEvent({
+        source: "quick_input",
+        raw_content: trimmed,
+        event_type: "user_input",
+      });
+      toast.success("已记录", { description: "输入已保存到 Inbox" });
+      setQuickInput("");
+      // 刷新 Dashboard 数据
+      reloadData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("保存失败", { description: msg });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <PagePlaceholder
@@ -45,18 +74,20 @@ export function DashboardPage() {
       <div className="mb-6 sticky top-0 z-10 -mx-6 -mt-6 bg-background/80 px-6 py-4 backdrop-blur border-b border-border">
         <div className="flex gap-2">
           <Input
+            value={quickInput}
+            onChange={(e) => setQuickInput(e.target.value)}
             placeholder="⚡ 快速输入... (⌘+I 全局唤起)"
             className="flex-1"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                // Phase 3 接入：保存为 Event
-                e.currentTarget.value = "";
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleQuickSubmit();
               }
             }}
           />
-          <Button>
+          <Button onClick={handleQuickSubmit} disabled={submitting || !quickInput.trim()}>
             <Zap className="mr-1.5 h-4 w-4" />
-            提交
+            {submitting ? "提交中..." : "提交"}
           </Button>
         </div>
       </div>

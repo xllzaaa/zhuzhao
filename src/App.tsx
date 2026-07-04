@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { LeftNav } from "@/components/layout/LeftNav";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
+import { QuickInputDialog } from "@/components/layout/QuickInputDialog";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { InboxPage } from "@/features/inbox/InboxPage";
 import { TasksPage } from "@/features/tasks/TasksPage";
@@ -99,6 +100,9 @@ export default function App() {
 
       {/* 右侧 Chat Sidebar */}
       <ChatSidebar />
+
+      {/* 全局快速输入 Dialog（⌘+I 唤起） */}
+      <QuickInputDialog />
 
       {/* Toast 通知 */}
       <Toaster />
