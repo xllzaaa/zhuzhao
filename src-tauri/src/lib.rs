@@ -27,6 +27,7 @@ pub fn run() {
                 .add_migrations("sqlite:zhuzhao.db", migrations())
                 .build(),
         )
+        .plugin(tauri_plugin_http::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
