@@ -11,9 +11,10 @@ import type {
   JournalEntryRow,
   IdeaRow,
   ReminderRow,
+  ReviewRow,
 } from "@/types/db";
 import { query } from "./base";
-import { nowIso } from "@/lib/id";
+import { nowIso, todayDate } from "@/lib/id";
 
 export interface DashboardData {
   /** 今日最重要任务 */
@@ -49,6 +50,11 @@ export interface DashboardData {
    * Phase 6 新增：用于 Dashboard 展示
    */
   recentlyTriggeredReminders: ReminderRow[];
+  /**
+   * 今日总结（reviews 表 review_type='daily'）
+   * Phase 7 新增：null 表示今日尚未生成
+   */
+  todaySummary: ReviewRow | null;
 }
 
 /** 加载 Dashboard 全部数据 */
@@ -69,6 +75,7 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     recentIdeas,
     pendingReminders,
     recentlyTriggeredReminders,
+    todaySummaryRows,
   ] = await Promise.all([
     query<TaskRow>(
       `SELECT * FROM tasks
@@ -128,6 +135,11 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
        ORDER BY updated_at DESC LIMIT ?`,
       [limit],
     ),
+    // Phase 7: 今日每日总结
+    query<ReviewRow>(
+      "SELECT * FROM reviews WHERE review_type = 'daily' AND review_date = ? LIMIT 1",
+      [todayDate()],
+    ),
   ]);
 
   return {
@@ -143,5 +155,6 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     recentIdeas,
     pendingReminders,
     recentlyTriggeredReminders,
+    todaySummary: todaySummaryRows[0] ?? null,
   };
 }

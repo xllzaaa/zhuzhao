@@ -73,6 +73,34 @@ export async function listByDate(date: string): Promise<JournalEntryRow[]> {
   );
 }
 
+/**
+ * 按日期区间查询（闭区间，按 entry_date 升序）
+ * Phase 7 新增：用于 Journal 页跨日查询
+ */
+export async function getByDateRange(
+  startDate: string,
+  endDate: string,
+): Promise<JournalEntryRow[]> {
+  return query<JournalEntryRow>(
+    "SELECT * FROM journal_entries WHERE entry_date >= ? AND entry_date <= ? ORDER BY entry_date DESC, created_at ASC",
+    [startDate, endDate],
+  );
+}
+
+/**
+ * 列出有日记的日期（用于日期选择器高亮）
+ * Phase 7 新增
+ */
+export async function listDatesWithEntries(
+  limit = 60,
+): Promise<string[]> {
+  const rows = await query<{ entry_date: string }>(
+    "SELECT DISTINCT entry_date FROM journal_entries ORDER BY entry_date DESC LIMIT ?",
+    [limit],
+  );
+  return rows.map((r) => r.entry_date);
+}
+
 export interface UpdateJournalAiFieldsInput {
   ai_summary?: string | null;
   mood?: Mood;

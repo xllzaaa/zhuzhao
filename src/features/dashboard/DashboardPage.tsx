@@ -11,6 +11,8 @@ import {
   Calendar,
   BellRing,
   TrendingUp,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +27,9 @@ import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 import { loadDashboardData, type DashboardData } from "@/lib/repositories/dashboard-queries";
 import { createEvent } from "@/lib/repositories/event-repo";
 import { runIntake } from "@/lib/intake/run-intake";
-import type { EventRow, TaskRow, JournalEntryRow, IdeaRow, ReminderRow } from "@/types/db";
+import { generateDailySummary } from "@/lib/daily-summary/generator";
+import { parseSections } from "@/lib/repositories/review-repo";
+import type { EventRow, TaskRow, JournalEntryRow, IdeaRow, ReminderRow, ReviewRow } from "@/types/db";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -34,6 +38,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [quickInput, setQuickInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   const reloadData = () =>
     loadDashboardData()
@@ -43,6 +48,30 @@ export function DashboardPage() {
   useEffect(() => {
     reloadData();
   }, []);
+
+  const handleGenerateSummary = async () => {
+    if (generatingSummary) return;
+    setGeneratingSummary(true);
+    try {
+      const result = await generateDailySummary();
+      if (result.ok) {
+        const source = result.source === "llm" ? "LLM" : "本地模板";
+        toast.success("今日总结已生成", {
+          description: `来源：${source}${result.warnings.length > 0 ? `（${result.warnings.length} 个警告）` : ""}`,
+        });
+        await reloadData();
+      } else {
+        toast.error("生成失败", {
+          description: result.error ?? "未知错误",
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("生成异常", { description: msg });
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
 
   const handleQuickSubmit = async () => {
     const trimmed = quickInput.trim();
@@ -326,13 +355,41 @@ export function DashboardPage() {
             </ScrollArea>
           </Card>
 
-          {/* 每日总结入口 */}
-          <Card className="p-4">
-            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <ClipboardList className="h-3 w-3" />
-              每日总结
-            </h3>
-            <EmptyHint icon={ClipboardList} text="今日未生成总结" />
+          {/* Phase 7: 今日总结 */}
+          <Card className="border-primary/30 p-4 md:col-span-2">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                今日总结
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleGenerateSummary}
+                disabled={generatingSummary}
+              >
+                {generatingSummary ? (
+                  <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-3 w-3" />
+                )}
+                {generatingSummary
+                  ? "生成中..."
+                  : data.todaySummary
+                    ? "重新生成"
+                    : "生成今日总结"}
+              </Button>
+            </div>
+            {generatingSummary ? (
+              <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                正在生成今日总结...
+              </div>
+            ) : data.todaySummary ? (
+              <DailySummaryCard review={data.todaySummary} />
+            ) : (
+              <EmptyHint icon={ClipboardList} text="今日未生成总结" />
+            )}
           </Card>
         </div>
       )}
@@ -500,6 +557,57 @@ function EmptyHint({
     <div className="flex h-full min-h-20 flex-col items-center justify-center gap-1 text-xs text-muted-foreground/50">
       <Icon className="h-4 w-4" />
       <span>{text}</span>
+    </div>
+  );
+}
+
+/** Phase 7: 今日总结迷你卡片 */
+function DailySummaryCard({ review }: { review: ReviewRow }) {
+  const sections = parseSections(review.sections);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="whitespace-pre-wrap break-words text-xs text-foreground/90 line-clamp-6">
+        {review.raw_content}
+      </div>
+      {sections && (
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          {sections.wins && sections.wins.length > 0 && (
+            <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-1.5">
+              <div className="font-medium text-emerald-400">做成 ({sections.wins.length})</div>
+              <ul className="ml-3 list-disc text-muted-foreground line-clamp-3">
+                {sections.wins.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {sections.delays && sections.delays.length > 0 && (
+            <div className="rounded border border-orange-500/20 bg-orange-500/5 p-1.5">
+              <div className="font-medium text-orange-400">拖延 ({sections.delays.length})</div>
+              <ul className="ml-3 list-disc text-muted-foreground line-clamp-3">
+                {sections.delays.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {sections.topNext && (
+            <div className="rounded border border-sky-500/20 bg-sky-500/5 p-1.5">
+              <div className="font-medium text-sky-400">明天最重要</div>
+              <p className="text-muted-foreground line-clamp-3">{sections.topNext}</p>
+            </div>
+          )}
+          {sections.improvement && (
+            <div className="rounded border border-violet-500/20 bg-violet-500/5 p-1.5">
+              <div className="font-medium text-violet-400">改进</div>
+              <p className="text-muted-foreground line-clamp-3">{sections.improvement}</p>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="text-[9px] text-muted-foreground/60">
+        生成于 {format(new Date(review.created_at), "yyyy-MM-dd HH:mm")}
+      </div>
     </div>
   );
 }
