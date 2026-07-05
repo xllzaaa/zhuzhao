@@ -95,7 +95,7 @@ export function MarkdownSettingsSection() {
     try {
       const updated = await saveMarkdownSettings({ enabled: !settings.enabled });
       setSettings(updated);
-      toast.success(updated.enabled ? "Markdown 导出已启用" : "Markdown 导出已禁用");
+      toast.success(updated.enabled ? "Markdown 导出已启用" : "Markdown 导出已关闭");
     } catch (err) {
       toast.error("切换失败", {
         description: err instanceof Error ? err.message : String(err),
@@ -183,7 +183,7 @@ export function MarkdownSettingsSection() {
                 : "bg-muted text-muted-foreground",
             )}
           >
-            {enabled ? "已启用" : "未启用"}
+            {enabled ? "已启用" : "已关闭"}
           </span>
         </div>
         <Button
@@ -192,7 +192,7 @@ export function MarkdownSettingsSection() {
           onClick={handleToggleEnabled}
           disabled={saving}
         >
-          {enabled ? "禁用" : "启用"}
+          {enabled ? "关闭" : "启用"}
         </Button>
       </div>
 
@@ -235,7 +235,7 @@ export function MarkdownSettingsSection() {
       <div className="flex items-center justify-between rounded border border-border bg-muted/30 px-3 py-2">
         <div className="flex items-center gap-2">
           <RefreshCw className={cn("h-3.5 w-3.5", autoExport ? "text-emerald-400" : "text-muted-foreground")} />
-          <span className="text-xs">生成每日总结后自动导出 Daily Markdown</span>
+          <span className="text-xs">生成每日总结后自动导出每日 Markdown</span>
         </div>
         <Button
           variant="ghost"
@@ -244,7 +244,7 @@ export function MarkdownSettingsSection() {
           disabled={saving || !enabled}
           className="h-7"
         >
-          {autoExport ? "已开启" : "已关闭"}
+          {autoExport ? "已启用" : "已关闭"}
         </Button>
       </div>
 

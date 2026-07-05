@@ -24,7 +24,7 @@ export function PagePlaceholder({
   title,
   description,
   icon: Icon,
-  emptyHint = "Phase 1 占位 · 后续 Phase 接入真实数据",
+  emptyHint = "还没有内容",
   action,
   children,
 }: PagePlaceholderProps) {
@@ -34,12 +34,12 @@ export function PagePlaceholder({
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           {Icon && (
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary tz-transition">
+              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
             </div>
           )}
-          <div>
-            <h1 className="text-xl font-semibold">{title}</h1>
+          <div className="flex flex-col leading-tight">
+            <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
@@ -81,7 +81,7 @@ export function PlaceholderCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card p-4",
+        "rounded-xl border border-border bg-card p-4 tz-transition",
         className,
       )}
     >

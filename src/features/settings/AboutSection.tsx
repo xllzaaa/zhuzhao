@@ -26,7 +26,7 @@ export function AboutSection() {
         </div>
         <div className="rounded border border-border bg-muted/20 px-2 py-1.5">
           <div className="text-[10px] text-muted-foreground/70">阶段</div>
-          <div className="font-mono">{APP_PHASE}（Phase 0-9 已完成）</div>
+          <div className="font-mono">{APP_PHASE}（阶段 0-9 已完成）</div>
         </div>
       </div>
 

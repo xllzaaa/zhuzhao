@@ -1,5 +1,5 @@
 /**
- * 全局快速输入 Dialog
+ * 全局快速记录 Dialog
  * 通过 ⌘+I / Ctrl+I 唤起
  * 提交后：
  *   1. 创建 Event(source='quick_input')
@@ -54,16 +54,16 @@ export function QuickInputDialog() {
         raw_content: trimmed,
         event_type: "user_input",
       });
-      toast.success("已记录", { description: "输入已保存到 Inbox" });
+      toast.success("已记录", { description: "输入已保存到收集箱" });
       setValue("");
       setOpen(false);
       // 2. 异步触发 LLM Intake（不阻塞 UI）
       runIntake(event, null)
         .then((result) => {
           if (result.success) {
-            toast.success("Intake 完成", { description: result.summary });
+            toast.success("已整理", { description: result.summary });
           } else {
-            toast.warning("Intake 未完成", { description: result.summary });
+            toast.warning("整理未完成", { description: result.summary });
           }
         })
         .catch(() => {
@@ -83,31 +83,37 @@ export function QuickInputDialog() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="mt-32 w-full max-w-2xl rounded-lg border border-border bg-card shadow-2xl"
+        className="mt-32 w-full max-w-2xl rounded-2xl border border-border/50 bg-card/95 shadow-2xl shadow-black/30 backdrop-blur-xl tz-transition"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 头部 */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Zap className="h-4 w-4 text-primary" />
-            快速输入
+        <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
+          <div className="flex flex-col leading-tight">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Zap className="h-4 w-4 text-primary" />
+              快速记录
+            </div>
+            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+              任务、日记、灵感都可以直接写在这里
+            </p>
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="text-muted-foreground hover:text-foreground"
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground tz-transition"
+            aria-label="关闭"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* 输入区 */}
-        <div className="p-4">
+        <div className="p-5">
           <textarea
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="想到什么就写什么。烛照会帮你判断要做什么。"
-            className="h-32 w-full resize-none rounded-md border border-border bg-background p-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder="想到什么就先写下来，烛照会帮你整理"
+            className="h-32 w-full resize-none rounded-xl border border-border/50 bg-background/60 p-3 text-sm leading-relaxed placeholder:text-muted-foreground/60 transition-all duration-150 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -115,24 +121,24 @@ export function QuickInputDialog() {
               }
             }}
           />
-          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground/70">
             <span>⌘+Enter 提交 · ESC 关闭</span>
             <span>{value.length} 字</span>
           </div>
         </div>
 
         {/* 底部 */}
-        <div className="flex justify-end gap-2 border-t border-border px-4 py-2">
+        <div className="flex justify-end gap-2 border-t border-border/40 px-5 py-3">
           <button
             onClick={() => setOpen(false)}
-            className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+            className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent/60 hover:text-foreground tz-transition"
           >
             取消
           </button>
           <button
             onClick={handleSubmit}
             disabled={!value.trim() || submitting}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground shadow-sm shadow-primary/20 transition-all duration-150 hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 disabled:saturate-50"
           >
             <Zap className="h-3 w-3" />
             {submitting ? "提交中..." : "提交"}

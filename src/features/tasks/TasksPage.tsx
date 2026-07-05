@@ -110,10 +110,10 @@ export function TasksPage() {
 
   return (
     <PagePlaceholder
-      title="Tasks"
-      description="全部任务 · 按状态筛选 · 监督执行"
+      title="任务"
+      description="推进、延期、完成，都在这里看清"
       icon={CheckSquare}
-      emptyHint="还没有任务。说一句话，烛照会帮你拆。"
+      emptyHint="还没有任务，说一句话，烛照会帮你拆。"
       action={
         <Button variant="outline" onClick={handleRefresh} disabled={loading}>
           <Plus className="mr-1.5 h-4 w-4" />
@@ -128,7 +128,7 @@ export function TasksPage() {
       >
         <TabsList>
           <TabsTrigger value="today">今日</TabsTrigger>
-          <TabsTrigger value="inbox">Inbox</TabsTrigger>
+          <TabsTrigger value="inbox">收集</TabsTrigger>
           <TabsTrigger value="active">进行中</TabsTrigger>
           <TabsTrigger value="delayed">延期</TabsTrigger>
           <TabsTrigger value="done">已完成</TabsTrigger>
@@ -153,7 +153,7 @@ export function TasksPage() {
       {!loading && tasks.length === 0 && !error && (
         <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground/50">
           {tab === "today" && "今日无到期任务"}
-          {tab === "inbox" && "Inbox 为空"}
+          {tab === "inbox" && "收集箱为空"}
           {tab === "active" && "暂无进行中任务"}
           {tab === "delayed" && "暂无延期任务"}
           {tab === "done" && "暂无已完成任务"}
@@ -200,12 +200,12 @@ function TaskCard({
   return (
     <HarshHighlight delayCount={task.delay_count}>
       <div
-        className={`rounded-lg border p-3 transition-colors ${
+        className={`rounded-xl border p-3 transition-all duration-150 ease-out ${
           isOverdue
-            ? "border-rose-600/40 bg-rose-600/5"
+            ? "border-rose-500/30 bg-rose-500/[0.04]"
             : isHarsh
-              ? "border-rose-600/30"
-              : "border-border bg-card hover:bg-accent/30"
+              ? "border-rose-500/25"
+              : "border-border/50 bg-card/80 hover:bg-accent/30 hover:border-border"
         }`}
       >
         {/* 标题行 */}
@@ -231,7 +231,7 @@ function TaskCard({
           {task.due_at && (
             <span
               className={`flex items-center gap-0.5 ${
-                isOverdue ? "text-rose-400 font-medium" : ""
+                isOverdue ? "text-rose-400/90" : ""
               }`}
             >
               <CalendarClock className="h-2.5 w-2.5" />
@@ -242,7 +242,7 @@ function TaskCard({
           {task.delay_count > 0 && (
             <span
               className={`flex items-center gap-0.5 ${
-                isHarsh ? "text-rose-400 font-medium" : "text-orange-400"
+                isHarsh ? "text-rose-400/90" : "text-amber-400/90"
               }`}
             >
               <AlertTriangle className="h-2.5 w-2.5" />
@@ -255,15 +255,15 @@ function TaskCard({
             </span>
           )}
           {task.completed_at && (
-            <span className="flex items-center gap-0.5 text-emerald-400">
+            <span className="flex items-center gap-0.5 text-emerald-400/90">
               <CheckCircle2 className="h-2.5 w-2.5" />
-              完成：{format(new Date(task.completed_at), "MM-dd HH:mm")}
+              完成于 {format(new Date(task.completed_at), "MM-dd HH:mm")}
             </span>
           )}
         </div>
 
         {/* 操作行 */}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-2">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2">
           {task.status !== "done" && task.status !== "dropped" && (
             <ActionButton
               size="sm"
@@ -293,7 +293,7 @@ function TaskCard({
               onClick={() => handleSnooze(task, onChange)}
             >
               <BellRing className="mr-1 h-3 w-3" />
-              稍后
+              稍后提醒
             </ActionButton>
           )}
 
@@ -304,12 +304,12 @@ function TaskCard({
               onClick={() => handleActivate(task, onChange)}
             >
               <Plus className="mr-1 h-3 w-3" />
-              激活
+              开始推进
             </ActionButton>
           )}
 
           <span className="ml-auto text-[9px] text-muted-foreground/50">
-            创建：{format(new Date(task.created_at), "MM-dd HH:mm")}
+            创建于 {format(new Date(task.created_at), "MM-dd HH:mm")}
           </span>
         </div>
       </div>
@@ -412,8 +412,8 @@ async function handleSnooze(
   // 找该任务的 pending/fired reminder
   const reminders = await listActiveByTaskId(task.id);
   if (reminders.length === 0) {
-    toast.warning("无活跃 reminder", {
-      description: "此任务没有待触发的 reminder，可使用『延期』创建新的。",
+    toast.warning("无待触发的提醒", {
+      description: "此任务没有待触发的提醒，可使用『延期』创建新的。",
     });
     return;
   }

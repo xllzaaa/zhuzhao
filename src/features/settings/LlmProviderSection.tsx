@@ -1,12 +1,12 @@
 /**
- * Settings · LLM Provider 配置区
+ * Settings · AI 引擎配置区
  *
  * 功能：
  * - 列出所有已配置 provider
  * - 当前 active provider 高亮显示
  * - 新增 / 编辑 / 删除 provider
- * - 单条 provider 「测试连接」按钮
- * - 顶部「测试 active 连接」按钮（即使未在编辑也可用）
+ * - 单条 provider「测试连接」按钮
+ * - 顶部「测试当前连接」按钮（即使未在编辑也可用）
  *
  * 安全：
  * - api_key 在 UI 中永不以明文展示
@@ -97,7 +97,7 @@ export function LlmProviderSection() {
       const list = await listAll();
       setProviders(list);
     } catch (err) {
-      toast.error("加载 provider 列表失败", {
+      toast.error("加载 AI 引擎列表失败", {
         description: err instanceof Error ? err.message : String(err),
       });
     } finally {
@@ -162,25 +162,25 @@ export function LlmProviderSection() {
   const handleSave = async () => {
     // 基础校验
     if (!form.name.trim()) {
-      toast.error("请填写 provider name");
+      toast.error("请填写名称");
       return;
     }
     if (!form.base_url.trim()) {
-      toast.error("请填写 base_url");
+      toast.error("请填写接口地址");
       return;
     }
     if (!form.model.trim()) {
-      toast.error("请填写 model");
+      toast.error("请填写模型名称");
       return;
     }
     const temperature = parseFloat(form.temperature);
     if (Number.isNaN(temperature) || temperature < 0 || temperature > 2) {
-      toast.error("temperature 必须为 0~2 之间的数字");
+      toast.error("温度必须是 0~2 之间的数字");
       return;
     }
     const maxTokens = parseInt(form.max_tokens, 10);
     if (Number.isNaN(maxTokens) || maxTokens <= 0) {
-      toast.error("max_tokens 必须为正整数");
+      toast.error("最大输出必须是正整数");
       return;
     }
 
@@ -203,7 +203,7 @@ export function LlmProviderSection() {
         }
         // 否则不传 api_key，保持原值
         await updateProvider(editingId, patch);
-        toast.success(`已更新 provider「${form.name.trim()}」`);
+        toast.success(`已更新「${form.name.trim()}」`);
       } else {
         // 新增
         const input: CreateProviderInput = {
@@ -218,7 +218,7 @@ export function LlmProviderSection() {
           api_key: form.api_key.trim() || null,
         };
         await createProvider(input);
-        toast.success(`已创建 provider「${form.name.trim()}」`);
+        toast.success(`已创建「${form.name.trim()}」`);
       }
       closeForm();
       await reload();
@@ -233,10 +233,10 @@ export function LlmProviderSection() {
 
   // 删除
   const handleDelete = async (p: LlmProviderRow) => {
-    if (!confirm(`确定删除 provider「${p.name}」？此操作不可撤销。`)) return;
+    if (!confirm(`确定删除「${p.name}」？此操作不可撤销。`)) return;
     try {
       await deleteProvider(p.id);
-      toast.success(`已删除 provider「${p.name}」`);
+      toast.success(`已删除「${p.name}」`);
       await reload();
     } catch (err) {
       toast.error("删除失败", {
@@ -249,10 +249,10 @@ export function LlmProviderSection() {
   const handleSetActive = async (p: LlmProviderRow) => {
     try {
       await updateProvider(p.id, { is_active: true });
-      toast.success(`已将「${p.name}」设为 active`);
+      toast.success(`已将「${p.name}」设为当前启用`);
       await reload();
     } catch (err) {
-      toast.error("设置 active 失败", {
+      toast.error("设置当前启用失败", {
         description: err instanceof Error ? err.message : String(err),
       });
     }
@@ -305,9 +305,9 @@ export function LlmProviderSection() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Cpu className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-medium">LLM Provider</h3>
+          <h3 className="text-sm font-medium">AI 引擎配置</h3>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
-            Phase 4
+            阶段 4
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -322,7 +322,7 @@ export function LlmProviderSection() {
             ) : (
               <Plug className="h-3.5 w-3.5" />
             )}
-            测试 active 连接
+            测试当前连接
           </Button>
           <Button size="sm" onClick={openCreate} disabled={isFormOpen}>
             <Plus className="h-3.5 w-3.5" />
@@ -331,12 +331,12 @@ export function LlmProviderSection() {
         </div>
       </div>
 
-      {/* Active Provider 状态条 */}
+      {/* 当前启用状态条 */}
       <div
         className={cn(
-          "rounded-md border p-3 text-xs",
+          "rounded-lg border p-3 text-xs",
           activeProvider
-            ? "border-primary/30 bg-primary/5 text-foreground"
+            ? "border-primary/30 bg-primary/[0.04] text-foreground"
             : "border-border bg-muted/40 text-muted-foreground",
         )}
       >
@@ -345,19 +345,19 @@ export function LlmProviderSection() {
             <>
               <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
               <span>
-                当前 active：
+                当前启用：
                 <span className="ml-1 font-medium text-foreground">
                   {activeProvider.name}
                 </span>
                 <span className="ml-2 text-muted-foreground">
-                  ({activeProvider.provider_type} · {activeProvider.model})
+                  （{activeProvider.provider_type} · {activeProvider.model}）
                 </span>
               </span>
             </>
           ) : (
             <>
               <AlertCircle className="h-3.5 w-3.5" />
-              <span>未配置 active provider，请先新增并勾选 is_active。</span>
+              <span>尚未启用任何 AI 引擎，请新增并勾选「设为当前启用」。</span>
             </>
           )}
         </div>
@@ -384,8 +384,8 @@ export function LlmProviderSection() {
             加载中...
           </div>
         ) : providers.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-            尚未配置任何 provider。点击右上「新增」开始。
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+            尚未配置任何 AI 引擎。点击右上「新增」开始。
           </div>
         ) : (
           providers.map((p) => (
@@ -435,8 +435,8 @@ function ProviderRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-md border bg-card p-3",
-        isActive ? "border-primary/40" : "border-border",
+        "flex items-center justify-between rounded-xl border bg-card/80 p-3 tz-transition",
+        isActive ? "border-primary/40" : "border-border/50",
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -446,28 +446,28 @@ function ProviderRow({
           </span>
           {isActive && (
             <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
-              active
+              当前启用
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <span>type: {provider.provider_type}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground/80">
+          <span>类型：{provider.provider_type}</span>
           <span>·</span>
-          <span className="truncate">model: {provider.model}</span>
+          <span className="truncate">模型：{provider.model}</span>
           <span>·</span>
-          <span className="truncate">{provider.base_url}</span>
+          <span className="truncate">接口地址：{provider.base_url}</span>
           <span>·</span>
           <span className="inline-flex items-center gap-1">
             <KeyRound className="h-3 w-3" />
             {hasApiKey ? (
-              <span className="text-foreground/70">已配置</span>
+              <span className="text-foreground/70">密钥已配置</span>
             ) : (
-              <span className="text-destructive">未配置</span>
+              <span className="text-destructive">密钥未配置</span>
             )}
           </span>
           <span>·</span>
           <span>
-            T={provider.temperature}, max_tokens={provider.max_tokens}
+            温度 {provider.temperature} · 最大输出 {provider.max_tokens}
           </span>
         </div>
       </div>
@@ -477,24 +477,24 @@ function ProviderRow({
           variant="ghost"
           onClick={onTest}
           disabled={testing}
-          title="测试此 provider 的连接"
+          title="测试此 AI 引擎的连接"
         >
           {testing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Plug className="h-3.5 w-3.5" />
           )}
-          测试
+          测试连接
         </Button>
         {!isActive && (
           <Button
             size="sm"
             variant="ghost"
             onClick={onSetActive}
-            title="设为 active"
+            title="设为当前启用"
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
-            设为 active
+            设为当前启用
           </Button>
         )}
         <Button
@@ -547,10 +547,10 @@ function ProviderForm({
   };
 
   return (
-    <div className="rounded-md border border-border bg-card p-4">
+    <div className="rounded-xl border border-border/50 bg-card/80 p-4">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="text-sm font-medium">
-          {editingId ? `编辑 provider` : "新增 provider"}
+          {editingId ? "编辑 AI 引擎" : "新增 AI 引擎"}
         </h4>
         <Button size="icon" variant="ghost" onClick={onCancel} className="h-7 w-7">
           <X className="h-3.5 w-3.5" />
@@ -559,17 +559,17 @@ function ProviderForm({
 
       <div className="grid grid-cols-2 gap-3">
         {/* name */}
-        <FormField label="Provider Name" required>
+        <FormField label="名称" required>
           <Input
             value={form.name}
             onChange={(e) => update("name", e.target.value)}
-            placeholder="例如：my-openai"
+            placeholder="例如：我的 OpenAI"
             className="h-8 text-xs"
           />
         </FormField>
 
         {/* provider_type */}
-        <FormField label="Provider Type" required>
+        <FormField label="类型" required>
           <select
             value={form.provider_type}
             onChange={(e) => onProviderTypeChange(e.target.value)}
@@ -584,7 +584,7 @@ function ProviderForm({
         </FormField>
 
         {/* base_url */}
-        <FormField label="Base URL" required fullWidth>
+        <FormField label="接口地址" required fullWidth>
           <Input
             value={form.base_url}
             onChange={(e) => update("base_url", e.target.value)}
@@ -614,7 +614,7 @@ function ProviderForm({
             onChange={(e) => update("api_key", e.target.value)}
             placeholder={
               editingId
-                ? "留空则保留原 api_key；填入则覆盖"
+                ? "留空则保留原 API Key；填入则覆盖"
                 : "sk-... （仅本地保存，不上传）"
             }
             autoComplete="off"
@@ -628,7 +628,7 @@ function ProviderForm({
         </FormField>
 
         {/* model */}
-        <FormField label="Model" required>
+        <FormField label="模型" required>
           <Input
             value={form.model}
             onChange={(e) => update("model", e.target.value)}
@@ -638,7 +638,7 @@ function ProviderForm({
         </FormField>
 
         {/* temperature */}
-        <FormField label="Temperature (0~2)">
+        <FormField label="温度（0~2）">
           <Input
             type="number"
             min={0}
@@ -651,7 +651,7 @@ function ProviderForm({
         </FormField>
 
         {/* max_tokens */}
-        <FormField label="Max Tokens">
+        <FormField label="最大输出">
           <Input
             type="number"
             min={1}
@@ -663,7 +663,7 @@ function ProviderForm({
         </FormField>
 
         {/* is_active */}
-        <FormField label="Active">
+        <FormField label="当前启用">
           <label className="flex h-8 items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -672,7 +672,7 @@ function ProviderForm({
               className="h-3.5 w-3.5 rounded border-input"
             />
             <span className="text-muted-foreground">
-              设为当前使用的 provider（同时仅一个 active）
+              设为当前使用的 AI 引擎（同时仅一个启用）
             </span>
           </label>
         </FormField>

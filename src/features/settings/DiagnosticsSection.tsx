@@ -41,9 +41,9 @@ type Filter = "all" | LogLevel;
 
 const FILTERS: { value: Filter; label: string; icon: typeof Info }[] = [
   { value: "all", label: "全部", icon: Activity },
-  { value: "error", label: "Error", icon: XOctagon },
-  { value: "warn", label: "Warn", icon: AlertTriangle },
-  { value: "info", label: "Info", icon: Info },
+  { value: "error", label: "错误", icon: XOctagon },
+  { value: "warn", label: "警告", icon: AlertTriangle },
+  { value: "info", label: "信息", icon: Info },
 ];
 
 export function DiagnosticsSection() {

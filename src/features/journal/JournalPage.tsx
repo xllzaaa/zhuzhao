@@ -111,10 +111,10 @@ export function JournalPage() {
 
   return (
     <PagePlaceholder
-      title="Journal"
-      description="日记 · 原文全量保存 · 每日总结"
+      title="日记"
+      description="保留原文，也照见当天状态"
       icon={BookOpen}
-      emptyHint="今天还没写日记。哪怕一句也行。"
+      emptyHint="今天还没写日记，哪怕一句也行。"
       action={
         <Button
           onClick={handleGenerate}
@@ -192,9 +192,9 @@ export function JournalPage() {
             </h3>
             <ScrollArea className="h-[calc(100vh-280px)] min-h-80">
               {journals.length === 0 ? (
-                <div className="flex h-32 flex-col items-center justify-center gap-1 text-xs text-muted-foreground/50">
-                  <FileText className="h-4 w-4" />
-                  <span>当日无日记</span>
+                <div className="flex h-32 flex-col items-center justify-center gap-2 text-xs text-muted-foreground/50">
+                  <FileText className="h-5 w-5" strokeWidth={1.5} />
+                  <span>这一天没有日记</span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3 pr-2">
@@ -245,40 +245,40 @@ export function JournalPage() {
 
 function JournalCard({ journal }: { journal: JournalEntryRow }) {
   return (
-    <div className="rounded-md border border-border p-3">
-      {/* 头部：mood + 时间 */}
-      <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground">
+    <div className="rounded-xl border border-border/50 bg-card/80 p-3.5 tz-transition">
+      {/* 头部：心情 + 时间 */}
+      <div className="mb-2 flex items-center justify-between text-[10px] text-muted-foreground/80">
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className="text-[10px]">
-            {journal.mood}
+            {journal.mood || "未标注"}
           </Badge>
           {journal.source_event_id && (
-            <span title={`source_event_id: ${journal.source_event_id}`}>
-              · 来源 event
+            <span title={`来源记录 ID：${journal.source_event_id}`}>
+              · 来源记录
             </span>
           )}
         </div>
         <span>{format(new Date(journal.created_at), "HH:mm:ss")}</span>
       </div>
 
-      {/* raw_content - 永远完整显示（INV-2） */}
-      <div className="whitespace-pre-wrap break-words text-sm">
+      {/* 原文 - 永远完整显示（INV-2） */}
+      <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
         {journal.raw_content}
       </div>
 
-      {/* ai_summary - 作为附加字段，不替代 raw_content */}
+      {/* 摘要 - 作为附加字段，不替代原文 */}
       {journal.ai_summary && (
-        <div className="mt-2 rounded bg-primary/5 px-2 py-1 text-xs text-muted-foreground">
-          <span className="font-medium">AI 摘要：</span>
+        <div className="mt-2.5 rounded-lg bg-primary/[0.04] px-2.5 py-1.5 text-xs text-muted-foreground leading-relaxed">
+          <span className="font-medium">摘要：</span>
           {journal.ai_summary}
         </div>
       )}
 
-      {/* tags */}
+      {/* 标签 */}
       {journal.tags && (
         <div className="mt-2 flex flex-wrap gap-1">
           {safeParseTags(journal.tags).map((tag, i) => (
-            <Badge key={i} variant="secondary" className="text-[9px]">
+            <Badge key={i} variant="secondary" className="text-[10px]">
               #{tag}
             </Badge>
           ))}
@@ -297,11 +297,11 @@ function ReviewCard({ review }: { review: ReviewRow }) {
       </div>
 
       {sections && (
-        <div className="mt-3 space-y-2 border-t border-border pt-2 text-[11px]">
+        <div className="mt-3 grid grid-cols-1 gap-2 border-t border-border/40 pt-3 text-[11px] sm:grid-cols-2">
           {sections.wins && sections.wins.length > 0 && (
-            <div>
-              <div className="font-medium text-emerald-400">做成</div>
-              <ul className="ml-3 list-disc text-muted-foreground">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-2">
+              <div className="font-medium text-emerald-400">做成（{sections.wins.length}）</div>
+              <ul className="ml-3 list-disc text-muted-foreground leading-relaxed">
                 {sections.wins.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
@@ -309,9 +309,9 @@ function ReviewCard({ review }: { review: ReviewRow }) {
             </div>
           )}
           {sections.delays && sections.delays.length > 0 && (
-            <div>
-              <div className="font-medium text-orange-400">拖延</div>
-              <ul className="ml-3 list-disc text-muted-foreground">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-2">
+              <div className="font-medium text-amber-400">拖延（{sections.delays.length}）</div>
+              <ul className="ml-3 list-disc text-muted-foreground leading-relaxed">
                 {sections.delays.map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
@@ -319,15 +319,15 @@ function ReviewCard({ review }: { review: ReviewRow }) {
             </div>
           )}
           {sections.topNext && (
-            <div>
+            <div className="rounded-lg border border-sky-500/20 bg-sky-500/[0.04] p-2">
               <div className="font-medium text-sky-400">明天最重要</div>
-              <p className="text-muted-foreground">{sections.topNext}</p>
+              <p className="text-muted-foreground leading-relaxed">{sections.topNext}</p>
             </div>
           )}
           {sections.improvement && (
-            <div>
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-2">
               <div className="font-medium text-violet-400">改进建议</div>
-              <p className="text-muted-foreground">{sections.improvement}</p>
+              <p className="text-muted-foreground leading-relaxed">{sections.improvement}</p>
             </div>
           )}
         </div>

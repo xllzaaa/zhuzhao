@@ -39,31 +39,37 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // 烛照业务状态色（直接值，见 UI_UX_SPEC §8 / §10）
+        // 烛照业务状态色（柔和版，降一档饱和度）
         status: {
-          inbox: "#a1a1aa", // zinc-400
-          planned: "#0ea5e9", // sky-500
-          doing: "#f59e0b", // amber-500（烛光）
-          done: "#10b981", // emerald-500
-          delayed: "#f97316", // orange-500
-          harsh: "#e11d48", // rose-600
-          blocked: "#8b5cf6", // violet-500
-          dropped: "#52525b", // zinc-600
-          review: "#facc15", // yellow-400
+          inbox: "#a1a1aa",      // zinc-400
+          planned: "#7dd3fc",    // sky-300（更柔）
+          doing: "#f0b04e",      // 柔烛光（从 amber-500 调柔）
+          done: "#34d399",       // emerald-400
+          delayed: "#fb923c",    // orange-400
+          harsh: "#e879a6",      // rose-400（更柔）
+          blocked: "#a78bfa",    // violet-400
+          dropped: "#71717a",    // zinc-500
+          review: "#facc15",     // yellow-400
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "SF Pro Display",
+          "SF Pro Text",
           "PingFang SC",
-          "Microsoft YaHei",
-          "Source Han Sans SC",
-          "system-ui",
+          "MiSans",
+          "Segoe UI Variable",
+          "Segoe UI",
+          "Microsoft YaHei UI",
+          "Noto Sans SC",
+          "Inter",
           "sans-serif",
         ],
         mono: ["JetBrains Mono", "Cascadia Code", "Consolas", "monospace"],
@@ -77,10 +83,15 @@ export default {
           from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "slide-in": {
+          from: { opacity: "0", transform: "translateY(6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "pulse-harsh": "pulse-harsh 1.5s ease-in-out 2",
         "fade-in": "fade-in 200ms ease-out",
+        "slide-in": "slide-in 150ms ease-out",
       },
     },
   },

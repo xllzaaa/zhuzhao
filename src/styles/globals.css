@@ -3,75 +3,78 @@
 @tailwind utilities;
 
 /* ============================================================
-   烛照设计系统 - 主题变量
-   详见 docs/UI_UX_SPEC.md §8 颜色系统
+   烛照设计系统 - 主题变量（Apple-like 柔和深色）
+   - 暖墨黑背景，避免纯黑
+   - 烛光琥珀降饱和、提亮
+   - 圆角加大到 0.75rem
+   - 字体平滑 + 中文 letter-spacing 优化
    ============================================================ */
 
 @layer base {
   :root {
     /* 浅色主题（备选） */
-    --background: 60 9% 98%;
-    --foreground: 20 14% 11%;
+    --background: 40 12% 97%;
+    --foreground: 30 8% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 20 14% 11%;
+    --card-foreground: 30 8% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14% 11%;
+    --popover-foreground: 30 8% 12%;
 
-    /* 烛光琥珀（主强调色） */
-    --primary: 38 92% 50%;
+    /* 烛光琥珀（柔和版） */
+    --primary: 38 76% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 60 5% 94%;
-    --secondary-foreground: 20 14% 11%;
+    --secondary: 40 8% 95%;
+    --secondary-foreground: 30 8% 12%;
 
-    --muted: 60 5% 94%;
-    --muted-foreground: 30 5% 40%;
+    --muted: 40 8% 95%;
+    --muted-foreground: 30 4% 42%;
 
-    --accent: 60 5% 94%;
-    --accent-foreground: 20 14% 11%;
+    --accent: 40 8% 95%;
+    --accent-foreground: 30 8% 12%;
 
-    --destructive: 347 77% 50%;
+    --destructive: 0 70% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 5% 87%;
-    --input: 30 5% 87%;
-    --ring: 38 92% 50%;
+    --border: 30 6% 88%;
+    --input: 30 6% 88%;
+    --ring: 38 76% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    /* 深色主题（默认）- 墨黑 + 烛光琥珀 */
-    --background: 240 6% 3.5%;
-    --foreground: 240 5% 89%;
+    /* 深色主题（默认）- 暖墨黑 + 柔烛光 */
+    --background: 30 6% 7%;
+    --foreground: 30 8% 92%;
 
-    --card: 240 6% 8%;
-    --card-foreground: 240 5% 89%;
+    --card: 30 6% 10%;
+    --card-foreground: 30 8% 92%;
 
-    --popover: 240 6% 8%;
-    --popover-foreground: 240 5% 89%;
+    --popover: 30 6% 11%;
+    --popover-foreground: 30 8% 92%;
 
-    /* 烛光琥珀（amber-500）作为主强调色 */
-    --primary: 38 92% 50%;
+    /* 烛光琥珀（柔和：降饱和、提亮） */
+    --primary: 38 76% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 6% 11.5%;
-    --secondary-foreground: 240 5% 89%;
+    --secondary: 30 5% 13%;
+    --secondary-foreground: 30 8% 92%;
 
-    --muted: 240 6% 11.5%;
-    --muted-foreground: 240 4% 65%;
+    --muted: 30 5% 13%;
+    --muted-foreground: 30 4% 62%;
 
-    --accent: 240 6% 11.5%;
-    --accent-foreground: 240 5% 89%;
+    --accent: 30 5% 15%;
+    --accent-foreground: 30 8% 92%;
 
-    --destructive: 347 77% 50%;
+    --destructive: 0 70% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 16%;
-    --input: 240 5% 16%;
-    --ring: 38 92% 50%;
+    --border: 30 5% 18%;
+    --input: 30 5% 18%;
+    --ring: 38 76% 60%;
   }
 }
 
@@ -84,9 +87,11 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.01em;
   }
 
-  /* 滚动条样式 - 深色主题 */
+  /* 滚动条样式 - 更柔 */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -100,6 +105,19 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+}
+
+/* ============================================================
+   组件级过渡 utility
+   - 仅显式应用到按钮、卡片、导航项、标签、气泡
+   - 不影响输入框聚焦、滚动、布局
+   ============================================================ */
+@layer components {
+  .tz-transition {
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

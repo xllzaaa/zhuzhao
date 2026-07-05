@@ -12,18 +12,25 @@ import { format } from "date-fns";
 
 const SOURCE_LABEL: Record<string, string> = {
   chat: "对话",
-  quick_input: "快速输入",
+  quick_input: "快速记录",
   journal: "日记",
   reminder: "提醒",
   system: "系统",
 };
 
 const SOURCE_CLASS: Record<string, string> = {
-  chat: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  quick_input: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  journal: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  reminder: "bg-orange-500/15 text-orange-300 border-orange-500/30",
-  system: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+  chat: "bg-sky-400/12 text-sky-300 border-sky-400/25",
+  quick_input: "bg-amber-500/12 text-amber-300 border-amber-500/25",
+  journal: "bg-violet-500/12 text-violet-300 border-violet-500/25",
+  reminder: "bg-orange-500/12 text-orange-300 border-orange-500/25",
+  system: "bg-zinc-500/12 text-zinc-400 border-zinc-500/25",
+};
+
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  user_input: "用户输入",
+  system_generated: "系统生成",
+  ai_processed: "AI 处理",
+  unknown: "未标注",
 };
 
 export function InboxPage() {
@@ -52,19 +59,19 @@ export function InboxPage() {
 
   return (
     <PagePlaceholder
-      title="Inbox"
-      description="待处理事件与最近输入"
+      title="收集"
+      description="所有输入都会先在这里沉淀"
       icon={Inbox}
-      emptyHint="Inbox 是干净的。这是好状态。"
+      emptyHint="收集箱是干净的，这是好状态。"
       action={
         <Button onClick={() => setQuickInputOpen(true)}>
           <Zap className="mr-1.5 h-4 w-4" />
-          快速输入 (⌘+I)
+          快速记录 (⌘+I)
         </Button>
       }
     >
       {error && (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
           加载失败：{error}
         </div>
       )}
@@ -77,7 +84,7 @@ export function InboxPage() {
       ) : events.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center gap-3 text-muted-foreground/50">
           <Inbox className="h-12 w-12" strokeWidth={1.5} />
-          <p className="text-sm">Inbox 是干净的。这是好状态。</p>
+          <p className="text-sm">收集箱是干净的，这是好状态。</p>
         </div>
       ) : (
         <ScrollArea className="h-full">
@@ -95,24 +102,26 @@ export function InboxPage() {
 function EventCard({ event }: { event: EventRow }) {
   const sourceLabel = SOURCE_LABEL[event.source] ?? event.source;
   const sourceClass = SOURCE_CLASS[event.source] ?? SOURCE_CLASS.system;
+  const typeLabel = EVENT_TYPE_LABEL[event.event_type] ?? EVENT_TYPE_LABEL.unknown;
 
   return (
-    <Card className="p-3 hover:border-primary/30 transition-colors">
+    <Card className="p-3 hover:border-primary/30 hover:bg-accent/30 tz-transition">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm break-words">{event.raw_content}</p>
-          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <p className="text-sm break-words leading-relaxed">{event.raw_content}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground/80">
             <Badge
               variant="outline"
-              className={`text-[9px] px-1.5 py-0 ${sourceClass}`}
+              className={`text-[10px] ${sourceClass}`}
             >
               {sourceLabel}
             </Badge>
-            <span>{format(new Date(event.created_at), "MM-dd HH:mm")}</span>
+            <span>· {typeLabel}</span>
+            <span>· 创建于 {format(new Date(event.created_at), "MM-dd HH:mm")}</span>
             {event.ai_processed === 1 ? (
-              <span className="text-emerald-400">· 已处理</span>
+              <span className="text-emerald-400/90">· 已整理</span>
             ) : (
-              <span className="text-muted-foreground/60">· 待 AI 处理</span>
+              <span className="text-muted-foreground/60">· 待 AI 整理</span>
             )}
           </div>
         </div>
