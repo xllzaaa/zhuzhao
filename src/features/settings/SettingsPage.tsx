@@ -1,6 +1,7 @@
 import { Settings, Database, FolderOpen, Shield, Cpu } from "lucide-react";
 import { PagePlaceholder, PlaceholderCard } from "@/components/layout/PagePlaceholder";
 import { LlmProviderSection } from "./LlmProviderSection";
+import { MarkdownSettingsSection } from "./MarkdownSettingsSection";
 
 export function SettingsPage() {
   return (
@@ -15,15 +16,17 @@ export function SettingsPage() {
         <LlmProviderSection />
       </div>
 
+      {/* Markdown / Obsidian 配置区（Phase 8） */}
+      <div className="mt-4 rounded-lg border border-border bg-card p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <FolderOpen className="h-4 w-4" />
+          Markdown / Obsidian 同步（Phase 8）
+        </h2>
+        <MarkdownSettingsSection />
+      </div>
+
       {/* 其他 Phase 占位 */}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <PlaceholderCard title="Markdown / Obsidian 同步（Phase 8）">
-          <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-            <FolderOpen className="h-4 w-4" />
-            未启用
-          </div>
-        </PlaceholderCard>
-
         <PlaceholderCard title="监督强度（Phase 9）">
           <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
             <Shield className="h-4 w-4" />
