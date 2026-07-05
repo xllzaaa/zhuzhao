@@ -41,6 +41,7 @@ import {
 import { execute } from "@/lib/repositories/base";
 import { ulid, nowIso } from "@/lib/id";
 import { listConversations } from "@/lib/repositories/conversation-repo";
+import { logWarn, logInfo, logError } from "@/lib/repositories/log-repo";
 
 // ---------------------------------------------------------------------------
 // 类型
@@ -101,18 +102,16 @@ export class ReminderScheduler {
     this.running = true;
     // 立即扫描一次
     this.scan().catch((err) => {
-      console.warn(
-        "[scheduler] 初始扫描失败：",
-        err instanceof Error ? err.message : String(err),
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[scheduler] 初始扫描失败：", msg);
+      void logWarn("reminder", `scheduler 初始扫描失败：${msg}`);
     });
     // 定期扫描
     this.timer = setInterval(() => {
       this.scan().catch((err) => {
-        console.warn(
-          "[scheduler] 定时扫描失败：",
-          err instanceof Error ? err.message : String(err),
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[scheduler] 定时扫描失败：", msg);
+        void logWarn("reminder", `scheduler 定时扫描失败：${msg}`);
       });
     }, this.options.intervalMs);
   }
@@ -150,10 +149,9 @@ export class ReminderScheduler {
     try {
       pending = await listPendingDue();
     } catch (err) {
-      console.warn(
-        "[scheduler] listPendingDue 失败：",
-        err instanceof Error ? err.message : String(err),
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[scheduler] listPendingDue 失败：", msg);
+      void logError("reminder", `listPendingDue 失败：${msg}`);
       return { triggered: 0, failed: 0 };
     }
 
@@ -173,15 +171,17 @@ export class ReminderScheduler {
         }
       } catch (err) {
         failed++;
-        console.warn(
-          `[scheduler] trigger reminder ${reminder.id} 失败：`,
-          err instanceof Error ? err.message : String(err),
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[scheduler] trigger reminder ${reminder.id} 失败：`, msg);
+        void logError("reminder", `trigger reminder 失败：${msg}`, {
+          reminder_id: reminder.id,
+        });
       }
     }
 
     if (triggered > 0) {
       console.info(`[scheduler] 触发 ${triggered} 条 reminder`);
+      void logInfo("reminder", `scheduler 触发 ${triggered} 条 reminder`);
     }
 
     return { triggered, failed };

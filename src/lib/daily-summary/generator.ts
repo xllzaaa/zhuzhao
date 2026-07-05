@@ -39,6 +39,7 @@ import {
   upsertDailySummary,
   type DailySummarySections,
 } from "@/lib/repositories/review-repo";
+import { logInfo, logWarn, logError } from "@/lib/repositories/log-repo";
 
 // ---------------------------------------------------------------------------
 // 输入数据
@@ -392,6 +393,7 @@ export async function generateDailySummary(
     // 数据加载失败，使用空输入做 fallback
     const errorMsg = err instanceof Error ? err.message : String(err);
     warnings.push(`数据加载失败：${errorMsg}`);
+    void logError("db", `daily summary 数据加载失败：${errorMsg}`, { date });
     input = {
       date,
       journals: [],
@@ -412,6 +414,7 @@ export async function generateDailySummary(
     const provider = await getActive();
     if (!provider) {
       warnings.push("未配置 active LLM Provider");
+      void logWarn("llm", "未配置 active LLM Provider，使用 fallback");
     } else {
       const messages = buildPrompt(input);
       const result = await chatCompletion(provider, {
@@ -429,6 +432,7 @@ export async function generateDailySummary(
         } else {
           // 解析失败，把原始内容当作文本
           warnings.push("LLM 返回非预期 JSON，使用原始文本");
+          void logWarn("llm", "LLM 返回非预期 JSON，使用原始文本");
           llmResult = {
             sections: {
               wins: [],
@@ -442,11 +446,13 @@ export async function generateDailySummary(
       } else {
         llmError = `${result.error.kind}: ${result.error.message}`;
         warnings.push(`LLM 调用失败：${llmError}`);
+        void logWarn("llm", `LLM 调用失败：${llmError}`);
       }
     }
   } catch (err) {
     llmError = err instanceof Error ? err.message : String(err);
     warnings.push(`LLM 异常：${llmError}`);
+    void logError("llm", `LLM 异常：${llmError}`);
   }
 
   // 3. 选择最终结果
@@ -477,9 +483,14 @@ export async function generateDailySummary(
       source,
     });
     reviewId = review.id;
+    void logInfo("db", `daily summary 已落库 date=${date} source=${source}`, {
+      review_id: review.id,
+      source,
+    });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     warnings.push(`落库失败：${errorMsg}`);
+    void logError("db", `daily summary 落库失败：${errorMsg}`, { date });
   }
 
   return {
