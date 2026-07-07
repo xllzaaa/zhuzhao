@@ -131,3 +131,42 @@ export async function updateAiFields(
   await execute(`UPDATE journal_entries SET ${sets.join(", ")} WHERE id = ?`, params);
   return getById(id);
 }
+
+/**
+ * 用户手动编辑日记字段
+ *
+ * 允许编辑：raw_content / entry_date / mood
+ * 仍然遵守 INV-2：raw_content 必须全量保存（不截断、不只存摘要）
+ *
+ * 注意：JournalEntryRow 无 updated_at 字段，不记录更新时间。
+ */
+export interface UpdateJournalInput {
+  raw_content?: string;
+  entry_date?: string;
+  mood?: Mood;
+}
+
+export async function updateJournal(
+  id: string,
+  patch: UpdateJournalInput,
+): Promise<JournalEntryRow | null> {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  if (patch.raw_content !== undefined) {
+    sets.push("raw_content = ?");
+    params.push(patch.raw_content);
+  }
+  if (patch.entry_date !== undefined) {
+    sets.push("entry_date = ?");
+    params.push(patch.entry_date);
+  }
+  if (patch.mood !== undefined) {
+    sets.push("mood = ?");
+    params.push(patch.mood);
+  }
+
+  if (sets.length === 0) return getById(id);
+  params.push(id);
+  await execute(`UPDATE journal_entries SET ${sets.join(", ")} WHERE id = ?`, params);
+  return getById(id);
+}

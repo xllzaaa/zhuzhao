@@ -58,6 +58,29 @@ export async function getById(id: string): Promise<TaskRow | null> {
   return rows[0] ?? null;
 }
 
+/** 按 source_event_id 查询单个任务（LIMIT 1） */
+export async function getTaskBySourceEventId(
+  sourceEventId: string,
+): Promise<TaskRow | null> {
+  const rows = await query<TaskRow>(
+    "SELECT * FROM tasks WHERE source_event_id = ? ORDER BY created_at ASC LIMIT 1",
+    [sourceEventId],
+  );
+  return rows[0] ?? null;
+}
+
+/** 按 source_event_id 批量查询任务（用于 Inbox 加载时建立 event.id -> TaskRow 映射） */
+export async function listBySourceEventIds(
+  sourceEventIds: string[],
+): Promise<TaskRow[]> {
+  if (sourceEventIds.length === 0) return [];
+  const placeholders = sourceEventIds.map(() => "?").join(",");
+  return query<TaskRow>(
+    `SELECT * FROM tasks WHERE source_event_id IN (${placeholders}) ORDER BY created_at ASC`,
+    sourceEventIds,
+  );
+}
+
 export async function listByStatus(status: TaskStatus): Promise<TaskRow[]> {
   return query<TaskRow>(
     "SELECT * FROM tasks WHERE status = ? ORDER BY created_at DESC",
