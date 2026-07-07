@@ -1,5 +1,5 @@
 /**
- * 全局快速记录 Dialog
+ * 全局快速记录 Dialog（Premium · Raycast command dialog 风格）
  * 通过 ⌘+I / Ctrl+I 唤起
  * 提交后：
  *   1. 创建 Event(source='quick_input')
@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Zap, X } from "lucide-react";
+import { Flame, Command } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 import { createEvent } from "@/lib/repositories/event-repo";
 import { runIntake } from "@/lib/intake/run-intake";
@@ -79,41 +79,41 @@ export function QuickInputDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 backdrop-blur-md"
       onClick={() => setOpen(false)}
     >
       <div
-        className="mt-32 w-full max-w-2xl rounded-2xl border border-border/50 bg-card/95 shadow-2xl shadow-black/30 backdrop-blur-xl tz-transition"
+        className="mt-[18vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-border/20 bg-card/80 shadow-2xl shadow-black/40 backdrop-blur-2xl tz-transition"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 头部 */}
-        <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
-          <div className="flex flex-col leading-tight">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Zap className="h-4 w-4 text-primary" />
+        {/* ===== 头部：烛照标识 + 标题 + 副标题 ===== */}
+        <div className="flex items-start gap-3.5 px-6 pt-6 pb-4">
+          <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+            <Flame className="h-5 w-5 text-primary" strokeWidth={1.6} />
+            <span className="absolute -bottom-1 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-primary/20 blur-[2px]" />
+          </div>
+          <div className="flex flex-1 flex-col gap-0.5 leading-tight">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
               快速记录
-            </div>
-            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-              任务、日记、灵感都可以直接写在这里
+            </h2>
+            <p className="text-[11px] text-muted-foreground/70">
+              任务、日记、灵感，都可以先扔给烛照。
             </p>
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground tz-transition"
-            aria-label="关闭"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="mt-0.5 flex items-center gap-1 rounded-md bg-muted/40 px-1.5 py-1 text-[10px] text-muted-foreground/70">
+            <Command className="h-2.5 w-2.5" />
+            ESC
+          </div>
         </div>
 
-        {/* 输入区 */}
-        <div className="p-5">
+        {/* ===== 输入区 ===== */}
+        <div className="px-6 pb-4">
           <textarea
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="想到什么就先写下来，烛照会帮你整理"
-            className="h-32 w-full resize-none rounded-xl border border-border/50 bg-background/60 p-3 text-sm leading-relaxed placeholder:text-muted-foreground/60 transition-all duration-150 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="想到什么就写下来，烛照会帮你整理…"
+            className="h-32 w-full resize-none rounded-2xl border border-border/20 bg-background/40 p-4 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 transition-all duration-200 focus:border-primary/30 focus:bg-background/60 focus:outline-none focus:ring-2 focus:ring-primary/15"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -121,27 +121,29 @@ export function QuickInputDialog() {
               }
             }}
           />
-          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground/70">
-            <span>⌘+Enter 提交 · ESC 关闭</span>
+          <div className="mt-2.5 flex items-center justify-between text-[10px] text-muted-foreground/50">
+            <span className="flex items-center gap-1">
+              <Command className="h-2.5 w-2.5" />+ Enter 提交
+            </span>
             <span>{value.length} 字</span>
           </div>
         </div>
 
-        {/* 底部 */}
-        <div className="flex justify-end gap-2 border-t border-border/40 px-5 py-3">
+        {/* ===== 底部按钮 ===== */}
+        <div className="flex items-center justify-end gap-2 border-t border-border/20 bg-muted/[0.15] px-6 py-4">
           <button
             onClick={() => setOpen(false)}
-            className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent/60 hover:text-foreground tz-transition"
+            className="rounded-xl px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground tz-transition"
           >
             取消
           </button>
           <button
             onClick={handleSubmit}
             disabled={!value.trim() || submitting}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground shadow-sm shadow-primary/20 transition-all duration-150 hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 disabled:saturate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-lg shadow-primary/30 transition-all duration-200 hover:bg-primary/90 hover:shadow-primary/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 disabled:saturate-50"
           >
-            <Zap className="h-3 w-3" />
-            {submitting ? "提交中..." : "提交"}
+            <Flame className="h-3 w-3" strokeWidth={2.2} />
+            {submitting ? "提交中..." : "交给烛照"}
           </button>
         </div>
       </div>

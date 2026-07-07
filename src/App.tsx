@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 import { LeftNav } from "@/components/layout/LeftNav";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
 import { QuickInputDialog } from "@/components/layout/QuickInputDialog";
@@ -87,12 +88,15 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="relative flex h-screen overflow-hidden bg-background text-foreground">
+      {/* 全局极轻烛光 ambient（opacity 0.04-0.08） */}
+      <AmbientBackground />
+
       {/* 左导航 */}
       <LeftNav />
 
       {/* 中间主内容区 */}
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="relative z-10 flex flex-1 flex-col overflow-hidden">
         {currentPage === "dashboard" && <DashboardPage />}
         {currentPage === "inbox" && <InboxPage />}
         {currentPage === "tasks" && <TasksPage />}

@@ -2,6 +2,11 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// Premium Card：与 SoftCard 区分，作为 L2 主卡使用
+// - 更柔的边框 border-border/30
+// - 半透明背景 bg-card/70
+// - 轻阴影 shadow-sm shadow-black/10
+// - hover 轻提亮
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -9,8 +14,11 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border/50 bg-card/80 text-card-foreground shadow-sm shadow-black/10 transition-all duration-150 ease-out",
-      className
+      "rounded-2xl border border-border/30 bg-card/70 text-card-foreground",
+      "shadow-sm shadow-black/10",
+      "transition-all duration-180 ease-apple-out",
+      "hover:bg-card/80 hover:border-border/40",
+      className,
     )}
     {...props}
   />

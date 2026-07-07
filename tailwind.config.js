@@ -39,17 +39,27 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // 烛照业务状态色（柔和版，降一档饱和度）
+        // 烛照业务状态色（保留语义，UI 中只用在小胶囊）
         status: {
           inbox: "#a1a1aa",      // zinc-400
-          planned: "#7dd3fc",    // sky-300（更柔）
-          doing: "#f0b04e",      // 柔烛光（从 amber-500 调柔）
+          planned: "#7dd3fc",    // sky-300
+          doing: "#f0b04e",      // 柔烛光
           done: "#34d399",       // emerald-400
           delayed: "#fb923c",    // orange-400
-          harsh: "#e879a6",      // rose-400（更柔）
+          harsh: "#e879a6",      // rose-400
           blocked: "#a78bfa",    // violet-400
           dropped: "#71717a",    // zinc-500
           review: "#facc15",     // yellow-400
+        },
+        // Premium 风险色（低饱和，用于左侧细条 + 小胶囊，opacity 由组件控制）
+        risk: {
+          overdue: "hsl(var(--risk-overdue))",
+          delay: "hsl(var(--risk-delay))",
+          harsh: "hsl(var(--risk-harsh))",
+        },
+        // 元信息层级（比 muted-foreground 更淡）
+        meta: {
+          foreground: "hsl(var(--meta-foreground))",
         },
       },
       borderRadius: {
@@ -58,18 +68,22 @@ export default {
         sm: "calc(var(--radius) - 4px)",
         xl: "calc(var(--radius) + 4px)",
         "2xl": "calc(var(--radius) + 8px)",
+        "3xl": "calc(var(--radius) + 12px)",
       },
       fontFamily: {
         sans: [
           "SF Pro Display",
           "SF Pro Text",
-          "PingFang SC",
           "MiSans",
+          "HarmonyOS Sans SC",
+          "PingFang SC",
+          "Alibaba PuHuiTi 3.0",
+          "Microsoft YaHei UI",
           "Segoe UI Variable",
           "Segoe UI",
-          "Microsoft YaHei UI",
           "Noto Sans SC",
           "Inter",
+          "system-ui",
           "sans-serif",
         ],
         mono: ["JetBrains Mono", "Cascadia Code", "Consolas", "monospace"],
@@ -87,11 +101,21 @@ export default {
           from: { opacity: "0", transform: "translateY(6px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "page-enter": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "pulse-harsh": "pulse-harsh 1.5s ease-in-out 2",
-        "fade-in": "fade-in 200ms ease-out",
-        "slide-in": "slide-in 150ms ease-out",
+        "fade-in": "fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-in": "slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "page-enter": "page-enter 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      // Apple-like 缓动
+      transitionTimingFunction: {
+        "apple-out": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "apple-in-out": "cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },

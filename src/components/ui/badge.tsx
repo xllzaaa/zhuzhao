@@ -3,18 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Premium Badge：胶囊式，与 MetricPill 风格协调
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-ring/70 focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-pill transition-colors duration-180 ease-apple-out focus:outline-none focus:ring-2 focus:ring-ring/60 focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/85",
+          "border-transparent bg-primary/15 text-primary hover:bg-primary/20",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-secondary/80 text-secondary-foreground hover:bg-secondary",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/85",
-        outline: "border-border/70 text-foreground hover:bg-accent/50",
+          "border-transparent bg-destructive/15 text-destructive hover:bg-destructive/20",
+        outline: "border-border/60 text-foreground hover:bg-accent/40",
       },
     },
     defaultVariants: {

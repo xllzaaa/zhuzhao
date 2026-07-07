@@ -3,16 +3,18 @@
 @tailwind utilities;
 
 /* ============================================================
-   烛照设计系统 - 主题变量（Apple-like 柔和深色）
-   - 暖墨黑背景，避免纯黑
-   - 烛光琥珀降饱和、提亮
-   - 圆角加大到 0.75rem
-   - 字体平滑 + 中文 letter-spacing 优化
+   烛照 Premium Design System (Batch A)
+   - 暖墨黑 + 极轻烛光 ambient（opacity 0.04-0.08）
+   - 三栏背景明度差分区（不靠硬线）
+   - 柔金烛光主色（再降饱和提亮）
+   - 字体层级完整化（Display / Page / Section / Card / Body / Meta / Pill）
+   - 圆角 0.75rem，组件级 2xl/3xl
+   - 动效 120-220ms Apple ease-out
    ============================================================ */
 
 @layer base {
   :root {
-    /* 浅色主题（备选） */
+    /* 浅色主题（备选，未启用） */
     --background: 40 12% 97%;
     --foreground: 30 8% 12%;
 
@@ -22,8 +24,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 30 8% 12%;
 
-    /* 烛光琥珀（柔和版） */
-    --primary: 38 76% 55%;
+    --primary: 38 70% 55%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 40 8% 95%;
@@ -35,46 +36,67 @@
     --accent: 40 8% 95%;
     --accent-foreground: 30 8% 12%;
 
-    --destructive: 0 70% 52%;
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 30 6% 88%;
     --input: 30 6% 88%;
-    --ring: 38 76% 55%;
+    --ring: 38 70% 55%;
 
     --radius: 0.75rem;
+
+    /* 三栏背景明度差（浅色未启用，与 dark 对称） */
+    --bg-sidebar: 40 12% 96%;
+    --bg-main: 40 12% 97%;
+    --bg-chat: 40 12% 95.5%;
+
+    /* 元信息层级（新增） */
+    --meta-foreground: 30 4% 45%;
   }
 
   .dark {
-    /* 深色主题（默认）- 暖墨黑 + 柔烛光 */
-    --background: 30 6% 7%;
-    --foreground: 30 8% 92%;
+    /* 深色主题（默认）- 暖墨黑底 */
+    --background: 30 8% 6%;
+    --foreground: 30 12% 95%;
 
-    --card: 30 6% 10%;
-    --card-foreground: 30 8% 92%;
+    --card: 30 7% 10%;
+    --card-foreground: 30 12% 95%;
 
-    --popover: 30 6% 11%;
-    --popover-foreground: 30 8% 92%;
+    --popover: 30 7% 11%;
+    --popover-foreground: 30 12% 95%;
 
-    /* 烛光琥珀（柔和：降饱和、提亮） */
-    --primary: 38 76% 60%;
+    /* 烛光琥珀（柔金：再降饱和、提亮，更精致） */
+    --primary: 38 70% 62%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 5% 13%;
-    --secondary-foreground: 30 8% 92%;
+    --secondary: 30 6% 13%;
+    --secondary-foreground: 30 10% 92%;
 
-    --muted: 30 5% 13%;
-    --muted-foreground: 30 4% 62%;
+    --muted: 30 6% 13%;
+    --muted-foreground: 30 5% 60%;
 
-    --accent: 30 5% 15%;
-    --accent-foreground: 30 8% 92%;
+    --accent: 30 6% 15%;
+    --accent-foreground: 30 10% 92%;
 
-    --destructive: 0 70% 56%;
+    --destructive: 0 60% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 5% 18%;
-    --input: 30 5% 18%;
-    --ring: 38 76% 60%;
+    --border: 30 6% 17%;
+    --input: 30 6% 17%;
+    --ring: 38 70% 62%;
+
+    /* 三栏背景明度差：sidebar 最深 / main 中 / chat 略深 */
+    --bg-sidebar: 30 8% 5%;
+    --bg-main: 30 8% 6%;
+    --bg-chat: 30 8% 5.5%;
+
+    /* 元信息层级（新增，比 muted-foreground 更淡） */
+    --meta-foreground: 30 4% 45%;
+
+    /* 风险色（低饱和半透明，用于左侧细条 + 小胶囊） */
+    --risk-overdue: 0 60% 58%;
+    --risk-delay: 32 70% 55%;
+    --risk-harsh: 340 50% 62%;
   }
 }
 
@@ -84,17 +106,24 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    letter-spacing: -0.01em;
+    /* 中文字距不要太紧，避免字形粘连；英文也保持自然 */
+    letter-spacing: -0.005em;
   }
 
-  /* 滚动条样式 - 更柔 */
+  /* 数字等宽（关键数字精致） */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 滚动条 - 更柔、更窄 */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -108,16 +137,66 @@
   }
 }
 
-/* ============================================================
-   组件级过渡 utility
-   - 仅显式应用到按钮、卡片、导航项、标签、气泡
-   - 不影响输入框聚焦、滚动、布局
-   ============================================================ */
 @layer components {
+  /* 组件级过渡 utility（仅显式应用到按钮/卡片/导航/标签/气泡） */
   .tz-transition {
     transition-property: background-color, border-color, color, box-shadow, transform;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* 文字层级 utility */
+  .text-display {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  .text-page-title {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  .text-section {
+    @apply text-xs font-medium uppercase tracking-wider opacity-60;
+  }
+  .text-card-title {
+    @apply text-sm font-semibold;
+  }
+  .text-body {
+    @apply text-[13px] leading-relaxed;
+  }
+  .text-caption {
+    @apply text-xs;
+  }
+  .text-meta {
+    /* 字号从 10px 提升到 11px，保证可读性，opacity 由调用方控制 */
+    @apply text-[11px];
+    color: hsl(var(--meta-foreground));
+  }
+  .text-pill {
+    @apply text-[11px] font-medium;
+  }
+
+  /* 三栏背景 utility */
+  .bg-sidebar-layer {
+    background-color: hsl(var(--bg-sidebar) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .bg-main-layer {
+    background-color: hsl(var(--bg-main));
+  }
+  .bg-chat-layer {
+    background-color: hsl(var(--bg-chat) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* 渐变细线分割（替代硬 border） */
+  .divider-soft {
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      hsl(var(--border) / 0.3) 20%,
+      hsl(var(--border) / 0.3) 80%,
+      transparent
+    );
   }
 }
 
