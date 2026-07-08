@@ -19,6 +19,8 @@ import type {
   Mood,
   IdeaStatus,
   MessageRole,
+  PomodoroStatus,
+  PomodoroMode,
 } from "./enums";
 
 /** 通用：DB 行的元数据字段 */
@@ -218,6 +220,29 @@ export interface LlmProviderRow {
   temperature: number;
   max_tokens: number;
   is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 15. pomodoro_sessions（Pomodoro V1） */
+export interface PomodoroSessionRow {
+  id: string;
+  task_id: string | null;
+  title: string;
+  status: PomodoroStatus;
+  planned_minutes: number;
+  break_minutes: number | null;
+  mode: PomodoroMode;
+  actual_seconds: number;
+  paused_seconds: number;
+  interruption_count: number;
+  interruption_reason: string | null;
+  completion_note: string | null;
+  started_at: string;
+  paused_at: string | null;
+  resumed_at: string | null;
+  ended_at: string | null;
+  source_event_id: string | null;
   created_at: string;
   updated_at: string;
 }

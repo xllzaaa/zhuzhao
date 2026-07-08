@@ -25,6 +25,7 @@ import {
   X,
   Calendar,
   Flag,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,7 +36,7 @@ import {
   TaskPriorityBadge,
   HarshHighlight,
 } from "@/components/badges/StatusBadges";
-import type { TaskRow, ReminderRow } from "@/types/db";
+import type { TaskRow, ReminderRow, PomodoroSessionRow } from "@/types/db";
 import type { TaskPriority } from "@/types/enums";
 import {
   listDueToday,
@@ -47,6 +48,8 @@ import {
   listAllNotDone,
   createTask,
 } from "@/lib/repositories/task-repo";
+import { listPomodoroSessionsByTaskId } from "@/lib/repositories/pomodoro-repo";
+import { startPomodoro, PomodoroError } from "@/lib/pomodoro/pomodoro-ops";
 import { nowIso } from "@/lib/id";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -487,6 +490,72 @@ function TaskCard({
     task.status !== "done" &&
     task.status !== "dropped";
 
+  // Pomodoro V1：任务维度番茄记录（展开时加载）
+  const [taskPomodoros, setTaskPomodoros] = useState<PomodoroSessionRow[]>([]);
+  const [pomoLoading, setPomoLoading] = useState(false);
+  const [pomoStarting, setPomoStarting] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) {
+      setTaskPomodoros([]);
+      return;
+    }
+    let cancelled = false;
+    setPomoLoading(true);
+    listPomodoroSessionsByTaskId(task.id)
+      .then((rows) => {
+        if (!cancelled) setTaskPomodoros(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setTaskPomodoros([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPomoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, task.id]);
+
+  const handleStartPomodoro = async () => {
+    if (pomoStarting) return;
+    setPomoStarting(true);
+    try {
+      const session = await startPomodoro({
+        task_id: task.id,
+        title: task.title,
+        planned_minutes: 25,
+      });
+      toast.success("番茄已开始", {
+        description: `${session.title} · 25 分钟`,
+      });
+      // 刷新任务维度番茄记录
+      try {
+        const rows = await listPomodoroSessionsByTaskId(task.id);
+        setTaskPomodoros(rows);
+      } catch {
+        // ignore
+      }
+    } catch (err) {
+      if (err instanceof PomodoroError) {
+        toast.warning("已有番茄进行中", { description: "请先完成或放弃当前番茄" });
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[Pomodoro] 启动失败", err);
+        toast.error("启动失败", { description: msg });
+      }
+    } finally {
+      setPomoStarting(false);
+    }
+  };
+
+  // 任务维度番茄统计
+  const completedCount = taskPomodoros.filter((s) => s.status === "completed").length;
+  const focusSeconds = taskPomodoros
+    .filter((s) => s.status === "completed")
+    .reduce((acc, s) => acc + s.actual_seconds, 0);
+  const focusMinutes = Math.round(focusSeconds / 60);
+
   return (
     <HarshHighlight delayCount={task.delay_count}>
       <div
@@ -681,6 +750,82 @@ function TaskCard({
                 )}
               </div>
             )}
+
+            {/* Pomodoro V1：任务维度番茄统计 */}
+            <div className="rounded-lg border border-primary/15 bg-primary/[0.04] p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-primary/80">
+                <Timer className="h-3 w-3" />
+                番茄记录
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-muted-foreground/70">完成番茄</span>
+                  <span className="tabular-nums text-foreground/85">
+                    {pomoLoading ? "—" : `${completedCount} 个`}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-muted-foreground/70">专注分钟</span>
+                  <span className="tabular-nums text-foreground/85">
+                    {pomoLoading ? "—" : `${focusMinutes} 分钟`}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-muted-foreground/70">总番茄</span>
+                  <span className="tabular-nums text-muted-foreground/80">
+                    {pomoLoading ? "—" : `${taskPomodoros.length} 次`}
+                  </span>
+                </div>
+              </div>
+              {/* 最近番茄记录 */}
+              {!pomoLoading && taskPomodoros.length > 0 && (
+                <div className="mt-2 flex flex-col gap-0.5 border-t border-border/20 pt-2">
+                  {taskPomodoros.slice(0, 3).map((s) => {
+                    const min = Math.round(s.actual_seconds / 60);
+                    const statusZh =
+                      s.status === "completed" ? "已完成" :
+                      s.status === "abandoned" ? "已放弃" :
+                      s.status === "interrupted" ? "已中断" :
+                      s.status === "running" ? "进行中" :
+                      s.status === "paused" ? "已暂停" : s.status;
+                    return (
+                      <div
+                        key={s.id}
+                        className="flex items-center justify-between text-[10px] text-muted-foreground/70"
+                      >
+                        <span className="truncate">
+                          <span
+                            className={cn(
+                              "mr-1.5 inline-block h-1.5 w-1.5 rounded-full",
+                              s.status === "completed" && "bg-emerald-400/80",
+                              s.status === "abandoned" && "bg-amber-400/80",
+                              s.status === "interrupted" && "bg-rose-400/80",
+                              s.status === "running" && "bg-primary/80",
+                              s.status === "paused" && "bg-primary/40",
+                            )}
+                          />
+                          {s.title}
+                        </span>
+                        <span className="ml-2 shrink-0 tabular-nums">
+                          {s.status === "completed" ? `${min} 分钟` : statusZh}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {taskPomodoros.length > 3 && (
+                    <div className="mt-0.5 text-[10px] text-muted-foreground/50">
+                      +{taskPomodoros.length - 3} 条更早记录
+                    </div>
+                  )}
+                </div>
+              )}
+              {!pomoLoading && taskPomodoros.length === 0 && (
+                <div className="mt-2 flex items-center gap-1.5 border-t border-border/20 pt-2 text-[10px] text-muted-foreground/50">
+                  <Timer className="h-3 w-3" />
+                  点击上方「开始番茄」为这个任务投入一段专注时间
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -738,6 +883,17 @@ function TaskCard({
             >
               <Plus className="mr-1 h-3 w-3" />
               开始推进
+            </ActionButton>
+          )}
+
+          {task.status !== "done" && task.status !== "dropped" && (
+            <ActionButton
+              size="sm"
+              variant="outline"
+              onClick={handleStartPomodoro}
+            >
+              <Timer className="mr-1 h-3 w-3" />
+              {pomoStarting ? "启动中..." : "开始番茄"}
             </ActionButton>
           )}
 

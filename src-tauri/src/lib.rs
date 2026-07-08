@@ -29,6 +29,18 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../../migrations/0004_app_logs.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "pomodoro_sessions table (Pomodoro V1)",
+            sql: include_str!("../../migrations/0005_pomodoro_sessions.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "pomodoro single active session index (Pomodoro V1 Safety Patch)",
+            sql: include_str!("../../migrations/0006_pomodoro_single_active_index.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

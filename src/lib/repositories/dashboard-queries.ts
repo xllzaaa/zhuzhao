@@ -15,6 +15,10 @@ import type {
 } from "@/types/db";
 import { query } from "./base";
 import { nowIso, todayDate } from "@/lib/id";
+import {
+  getTodayPomodoroStats,
+  type PomodoroTodayStats,
+} from "./pomodoro-repo";
 
 export interface DashboardData {
   /** 今日最重要任务 */
@@ -55,6 +59,8 @@ export interface DashboardData {
    * Phase 7 新增：null 表示今日尚未生成
    */
   todaySummary: ReviewRow | null;
+  /** Pomodoro V1：今日番茄统计（含活跃会话） */
+  pomodoroStats: PomodoroTodayStats;
 }
 
 /** 加载 Dashboard 全部数据 */
@@ -76,6 +82,7 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     pendingReminders,
     recentlyTriggeredReminders,
     todaySummaryRows,
+    pomodoroStats,
   ] = await Promise.all([
     query<TaskRow>(
       `SELECT * FROM tasks
@@ -140,6 +147,16 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
       "SELECT * FROM reviews WHERE review_type = 'daily' AND review_date = ? LIMIT 1",
       [todayDate()],
     ),
+    // Pomodoro V1：今日番茄统计（失败时返回空统计，不阻塞 Dashboard）
+    getTodayPomodoroStats().catch(() => ({
+      completed_count: 0,
+      focus_seconds: 0,
+      focus_minutes: 0,
+      interrupted_count: 0,
+      abandoned_count: 0,
+      active_session: null,
+      recent_sessions: [],
+    })),
   ]);
 
   return {
@@ -156,5 +173,6 @@ export async function loadDashboardData(limit = 5): Promise<DashboardData> {
     pendingReminders,
     recentlyTriggeredReminders,
     todaySummary: todaySummaryRows[0] ?? null,
+    pomodoroStats,
   };
 }

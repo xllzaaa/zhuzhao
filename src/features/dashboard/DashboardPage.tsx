@@ -12,6 +12,10 @@ import {
   Sparkles,
   RefreshCw,
   ArrowRight,
+  Timer,
+  Play,
+  Pause,
+  StopCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +40,16 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import {
+  startPomodoro,
+  pausePomodoro,
+  resumePomodoro,
+  completePomodoro,
+  abandonPomodoro,
+  calculateRemainingSeconds,
+  calculateElapsedSeconds,
+  PomodoroError,
+} from "@/lib/pomodoro/pomodoro-ops";
 
 /** 数据来源 → 中文标签 */
 const SOURCE_LABEL: Record<string, string> = {
@@ -175,6 +189,12 @@ export function DashboardPage() {
                 onGenerate={handleGenerateSummary}
               />
             </div>
+
+            {/* ===== Pomodoro Focus Card（番茄钟工作台） ===== */}
+            <PomodoroCard
+              stats={data.pomodoroStats}
+              onChanged={reloadData}
+            />
 
             {/* ===== ④ Risk Strip（监督信息收纳） ===== */}
             <RiskStrip
@@ -810,6 +830,255 @@ function ActivityGrid({
         </ScrollArea>
       </SoftCard>
     </div>
+  );
+}
+
+// =========================================================================
+// Pomodoro Card - 番茄钟工作台
+// =========================================================================
+
+/** 统一处理番茄钟错误：PomodoroError 用 warning，DB/其他错误用 error，并 console.error 保留底层 */
+function handlePomodoroError(err: unknown, fallbackTitle: string, warningTitle: string) {
+  if (err instanceof PomodoroError) {
+    toast.warning(warningTitle, { description: err.message });
+  } else {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Pomodoro]", fallbackTitle, err);
+    toast.error(fallbackTitle, { description: msg });
+  }
+}
+
+function PomodoroCard({
+  stats,
+  onChanged,
+}: {
+  stats: import("@/lib/repositories/pomodoro-repo").PomodoroTodayStats;
+  onChanged: () => void;
+}) {
+  const [nowTick, setNowTick] = useState(Date.now());
+  const [busy, setBusy] = useState(false);
+  const active = stats.active_session;
+
+  // 每秒刷新倒计时（仅 UI，不写 DB）
+  useEffect(() => {
+    if (!active || active.status === "completed" || active.status === "abandoned" || active.status === "interrupted") {
+      return;
+    }
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+
+  const handleStart = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await startPomodoro({ title: "专注一轮", planned_minutes: 25 });
+      toast.success("番茄已开始", { description: "25 分钟专注" });
+      onChanged();
+    } catch (err) {
+      handlePomodoroError(err, "开始失败", "无法开始");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePause = async () => {
+    if (!active || busy) return;
+    setBusy(true);
+    try {
+      await pausePomodoro(active.id);
+      toast.success("已暂停");
+      onChanged();
+    } catch (err) {
+      handlePomodoroError(err, "暂停失败", "无法暂停");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!active || busy) return;
+    setBusy(true);
+    try {
+      await resumePomodoro(active.id);
+      toast.success("已继续");
+      onChanged();
+    } catch (err) {
+      handlePomodoroError(err, "继续失败", "无法继续");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!active || busy) return;
+    setBusy(true);
+    try {
+      await completePomodoro(active.id);
+      toast.success("番茄完成", { description: "专注已记录" });
+      onChanged();
+    } catch (err) {
+      handlePomodoroError(err, "完成失败", "无法完成");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAbandon = async () => {
+    if (!active || busy) return;
+    setBusy(true);
+    try {
+      await abandonPomodoro(active.id);
+      toast.info("已放弃本轮番茄");
+      onChanged();
+    } catch (err) {
+      handlePomodoroError(err, "放弃失败", "无法放弃");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 倒计时显示（不显示负数）
+  const rawRemaining = active ? calculateRemainingSeconds(active, nowTick) : 0;
+  const remainingSeconds = Math.max(0, rawRemaining);
+  const elapsedSeconds = active ? calculateElapsedSeconds(active, nowTick) : 0;
+  const mm = Math.floor(remainingSeconds / 60);
+  const ss = remainingSeconds % 60;
+  const countdownText = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  // 时间是否已到（仅 running 状态判定，paused 不算到时）
+  const isTimeUp = active !== null
+    && active.status === "running"
+    && rawRemaining <= 0;
+
+  // 进度条
+  const totalSeconds = active ? active.planned_minutes * 60 : 0;
+  const progress = totalSeconds > 0 ? Math.min(100, (elapsedSeconds / totalSeconds) * 100) : 0;
+
+  return (
+    <SoftCard className="p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <SectionHeader icon={Timer} title="今日专注" />
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70">
+          <span>
+            完成 <span className="tabular-nums text-foreground/90">{stats.completed_count}</span>
+          </span>
+          <span>
+            专注 <span className="tabular-nums text-foreground/90">{stats.focus_minutes}</span> 分钟
+          </span>
+          {stats.interrupted_count > 0 && (
+            <span className="text-amber-400/80">
+              中断 <span className="tabular-nums">{stats.interrupted_count}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {active ? (
+        <div className="flex flex-col gap-4">
+          {/* 活跃会话显示 */}
+          <div className="flex items-center gap-4">
+            {/* 大倒计时 */}
+            <div className="flex-shrink-0">
+              <div
+                className={cn(
+                  "tabular-nums text-4xl font-semibold tracking-tight leading-none",
+                  isTimeUp
+                    ? "text-amber-300"
+                    : active.status === "paused"
+                      ? "text-muted-foreground/70"
+                      : remainingSeconds <= 60
+                        ? "text-amber-300"
+                        : "text-foreground",
+                )}
+              >
+                {countdownText}
+              </div>
+              <div className="mt-1 text-[10px] text-muted-foreground/60">
+                {isTimeUp ? "已到时间" : active.status === "paused" ? "已暂停" : "剩余"}
+              </div>
+            </div>
+
+            {/* 会话信息 */}
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-sm font-medium">{active.title}</div>
+              <div className="mt-1 text-[10px] text-muted-foreground/60">
+                计划 {active.planned_minutes} 分钟 · 已专注 {Math.floor(elapsedSeconds / 60)} 分钟
+              </div>
+              {/* 进度条 */}
+              <div className="mt-2 h-1 rounded-full bg-muted/40 overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full tz-transition",
+                    isTimeUp
+                      ? "bg-amber-400"
+                      : active.status === "paused"
+                        ? "bg-muted-foreground/40"
+                        : "bg-primary",
+                  )}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 时间到提示 */}
+          {isTimeUp && (
+            <div className="rounded-lg border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2">
+              <div className="text-xs font-medium text-amber-200">
+                本轮番茄已到时间
+              </div>
+              <div className="mt-0.5 text-[11px] text-amber-200/70">
+                请确认完成或放弃
+              </div>
+            </div>
+          )}
+
+          {/* 操作按钮 */}
+          <div className="flex flex-wrap items-center gap-2">
+            {active.status === "running" && !isTimeUp && (
+              <Button size="sm" variant="outline" onClick={handlePause} disabled={busy} className="h-8">
+                <Pause className="mr-1 h-3 w-3" />
+                暂停
+              </Button>
+            )}
+            {active.status === "paused" && (
+              <Button size="sm" variant="outline" onClick={handleResume} disabled={busy} className="h-8">
+                <Play className="mr-1 h-3 w-3" />
+                继续
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={handleComplete}
+              disabled={busy}
+              className={cn(
+                "h-8",
+                isTimeUp && "ring-2 ring-amber-400/50 ring-offset-2 ring-offset-card animate-pulse",
+              )}
+            >
+              <CheckCircle2 className="mr-1 h-3 w-3" />
+              完成
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleAbandon} disabled={busy} className="h-8 text-muted-foreground">
+              <StopCircle className="mr-1 h-3 w-3" />
+              放弃本轮
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground/70">
+            {stats.completed_count > 0
+              ? `今天已专注 ${stats.focus_minutes} 分钟，继续加油。`
+              : "今天还没有开始专注，点一个 25 分钟番茄。"}
+          </div>
+          <Button size="sm" onClick={handleStart} disabled={busy} className="h-8">
+            <Timer className="mr-1.5 h-3.5 w-3.5" />
+            开始专注
+          </Button>
+        </div>
+      )}
+    </SoftCard>
   );
 }
 

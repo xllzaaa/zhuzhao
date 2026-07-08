@@ -84,3 +84,14 @@ export type EventSource = "chat" | "quick_input" | "journal" | "reminder" | "sys
 
 /** Event 类型 */
 export type EventType = "user_input" | "system" | "reminder_fired";
+
+/** 番茄钟会话状态 - Pomodoro V1 */
+export type PomodoroStatus =
+  | "running"
+  | "paused"
+  | "completed"
+  | "abandoned"
+  | "interrupted";
+
+/** 番茄钟模式 - V1 仅 focus，预留 break */
+export type PomodoroMode = "focus" | "break";

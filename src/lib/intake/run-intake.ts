@@ -77,6 +77,7 @@ export async function runIntake(
       activeProjects: ctxData.activeProjects,
       userProfileBrief: ctxData.userProfileBrief,
       activeRules: ctxData.activeRules,
+      pomodoroBrief: ctxData.pomodoroBrief,
     });
 
     // 3. 分支处理

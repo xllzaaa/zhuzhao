@@ -39,6 +39,8 @@ export interface IntakeContext {
   userProfileBrief: Pick<UserProfileRow, "profile_key" | "profile_value" | "confidence">[];
   /** 启用中的 agent_rules */
   activeRules: Pick<AgentRuleRow, "rule_name" | "condition" | "tone">[];
+  /** Pomodoro V1：今日番茄摘要（可选，null 表示无数据） */
+  pomodoroBrief?: import("@/lib/pomodoro/pomodoro-ops").PomodoroAIContext | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +168,34 @@ function buildSystemPrompt(ctx: IntakeContext): string {
     lines.push("## 启用中的监督规则");
     for (const r of ctx.activeRules) {
       lines.push(`- ${r.rule_name}: 条件=${r.condition} · 语气=${r.tone}`);
+    }
+  }
+
+  // Pomodoro V1：今日番茄摘要
+  if (ctx.pomodoroBrief) {
+    const pb = ctx.pomodoroBrief;
+    lines.push("");
+    lines.push("## 今日专注摘要（番茄钟）");
+    lines.push(`- 今日完成番茄：${pb.completed_pomodoros_today} 个`);
+    lines.push(`- 今日专注分钟：${pb.focus_minutes_today} 分钟`);
+    if (pb.interrupted_pomodoros_today > 0) {
+      lines.push(`- 中断次数：${pb.interrupted_pomodoros_today}`);
+    }
+    if (pb.abandoned_pomodoros_today > 0) {
+      lines.push(`- 放弃次数：${pb.abandoned_pomodoros_today}`);
+    }
+    if (pb.active_pomodoro_session) {
+      const a = pb.active_pomodoro_session;
+      lines.push(
+        `- 当前进行中：${a.title}（${a.status}，剩余 ${Math.floor(a.remaining_seconds / 60)} 分钟）`,
+      );
+    }
+    if (pb.recent_pomodoro_sessions.length > 0) {
+      lines.push("- 最近番茄：");
+      for (const s of pb.recent_pomodoro_sessions.slice(0, 3)) {
+        const min = Math.round(s.actual_seconds / 60);
+        lines.push(`  · [${s.status}] ${s.title}（专注 ${min} 分钟）`);
+      }
     }
   }
 

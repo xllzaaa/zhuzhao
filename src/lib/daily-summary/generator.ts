@@ -40,6 +40,7 @@ import {
   type DailySummarySections,
 } from "@/lib/repositories/review-repo";
 import { logInfo, logWarn, logError } from "@/lib/repositories/log-repo";
+import { getTodayPomodoroStats, type PomodoroTodayStats } from "@/lib/repositories/pomodoro-repo";
 
 // ---------------------------------------------------------------------------
 // 输入数据
@@ -55,7 +56,20 @@ export interface DailySummaryInput {
   ideas: IdeaRow[];
   remindersTriggered: ReminderRow[];
   events: EventRow[];
+  /** Pomodoro V1：今日番茄统计（失败时为空统计） */
+  pomodoroStats: PomodoroTodayStats;
 }
+
+/** 空番茄统计（加载失败时使用） */
+const EMPTY_POMODORO_STATS: PomodoroTodayStats = {
+  completed_count: 0,
+  focus_seconds: 0,
+  focus_minutes: 0,
+  interrupted_count: 0,
+  abandoned_count: 0,
+  active_session: null,
+  recent_sessions: [],
+};
 
 /**
  * 加载某天的输入数据
@@ -78,6 +92,7 @@ export async function loadSummaryInput(
     ideasAll,
     remindersTriggered,
     events,
+    pomodoroStats,
   ] = await Promise.all([
     listByDate(date),
     // 完成时间在当天
@@ -122,6 +137,8 @@ export async function loadSummaryInput(
        ORDER BY created_at ASC`,
       [dayPrefix],
     ),
+    // Pomodoro V1：今日番茄统计（失败返回空统计）
+    getTodayPomodoroStats(date).catch(() => EMPTY_POMODORO_STATS),
   ]);
 
   return {
@@ -133,6 +150,7 @@ export async function loadSummaryInput(
     ideas: ideasAll,
     remindersTriggered,
     events,
+    pomodoroStats,
   };
 }
 
@@ -233,6 +251,28 @@ export function buildPrompt(input: DailySummaryInput): ChatMessage[] {
           : e.raw_content;
       sections.push(`${i + 1}. [${e.source}] ${content}`);
     });
+   }
+  sections.push("");
+
+  // Pomodoro V1：今日专注数据
+  {
+    const ps = input.pomodoroStats;
+    sections.push(`## 今日专注（番茄钟）`);
+    sections.push(`- 完成番茄：${ps.completed_count} 个`);
+    sections.push(`- 专注分钟：${ps.focus_minutes} 分钟`);
+    if (ps.interrupted_count > 0) {
+      sections.push(`- 中断次数：${ps.interrupted_count}`);
+    }
+    if (ps.abandoned_count > 0) {
+      sections.push(`- 放弃次数：${ps.abandoned_count}`);
+    }
+    if (ps.recent_sessions.length > 0) {
+      sections.push("- 最近番茄：");
+      ps.recent_sessions.slice(0, 5).forEach((s) => {
+        const min = Math.round(s.actual_seconds / 60);
+        sections.push(`  · [${s.status}] ${s.title}（专注 ${min} 分钟）`);
+      });
+    }
   }
 
   const systemPrompt = `你是「烛照」，一个本地优先的强监督型个人 AI 助手。现在需要为用户生成今日回顾。
@@ -281,6 +321,12 @@ export function fallbackSummary(
   }
   if (input.journals.length > 0) {
     wins.push(`写了 ${input.journals.length} 条日记`);
+  }
+  // Pomodoro V1：番茄产出也计入做成
+  if (input.pomodoroStats.completed_count > 0) {
+    wins.push(
+      `完成 ${input.pomodoroStats.completed_count} 个番茄，专注 ${input.pomodoroStats.focus_minutes} 分钟`,
+    );
   }
 
   const delays: string[] = [];
@@ -403,6 +449,7 @@ export async function generateDailySummary(
       ideas: [],
       remindersTriggered: [],
       events: [],
+      pomodoroStats: EMPTY_POMODORO_STATS,
     };
   }
 
